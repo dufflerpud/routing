@@ -1,0 +1,17 @@
+# This is the list of colors that the routing mappers
+# know how to produce in the order in which they appear
+Index	Name		rrggbb	AABBGGRR	Paddle
+0	blue		0000ff	C8FF7800	blu
+1	green		008000	C878FF00	grn
+2	purple		800080	C8FF7878	purple
+3	orange		ffa500	C81478FF	orange
+4	red		ff0000	C81400FF	red
+5	yellow		ffff00	C800FFFF	yellow
+6	white		ffffff	C8FFFFFF	wht
+7	brown		a52a2a	C8143C96	-
+8	pink		ffc0cb	C8A078F0	-
+9	cyan		00ffff	C8F0FF14	-
+10	gray		808080	C8A0A0A0	-
+11	black		000000	C8000000	-
+12	darkgreen	006400	C8008C14	-
+13	darkblue	00008b	C8F01414	-

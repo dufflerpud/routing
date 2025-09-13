@@ -1,0 +1,378 @@
+#@HDR@	$Id$
+#@HDR@		Copyright 2024 by
+#@HDR@		Christopher Caldwell/Brightsands
+#@HDR@		P.O. Box 401, Bailey Island, ME 04003
+#@HDR@		All Rights Reserved
+#@HDR@
+#@HDR@	This software comprises unpublished confidential information
+#@HDR@	of Brightsands and may not be used, copied or made available
+#@HDR@	to anyone, except in accordance with the license under which
+#@HDR@	it is furnished.
+$mapperp->{minmaps} = 1;
+$mapperp->{maxmaps} = 1;
+our @MAP_COLORS;
+
+${$mapperp->{KEY}}	= 'dxMEhIJ2eQ1jS8098HjxwiUj8W0xjJwH';
+${$mapperp->{STATICURL}}	= "https://www.mapquestapi.com/staticmap/v5/map";
+${$mapperp->{SHAPE_PARMS}}
+			= "fill:ffffff88|width:7mi|weight:4";
+
+${$mapperp->{PRECISION}} = 5;
+@{$mapperp->{BOUNDS_ORDER}} = ("maxlat","maxlng","minlat","minlng");
+$mapperp->{destext}	= "html";
+$mapperp->{mime}	= "text/html";
+$mapperp->{tobrowser}	= 1;
+$mapperp->{name}	= "Mapquest generated jpeg";
+
+#########################################################################
+# Stolen directly (though re-indented) from				#
+# https://developer.mapquest.com/documentation/common/encode-decode/	#
+#########################################################################
+$mapperp->{decompress} = sub
+    {
+    my($precision,$encoded_str) = @_;
+    my @encoded = split(//,$encoded_str);
+    my $precision_divider = 10.00 ** $precision;
+    my @decoded;
+    my $latlong_ind = 0;	#0=Latitude 1=Longitude
+    my @latlong = (0,0);
+    my $len = scalar(@encoded);
+    for( my $index=0; $index<$len; $latlong_ind=1-$latlong_ind )
+	{
+	my $b;
+	my $vshift = 0;
+	my $result = 0;
+	do  {
+	    $b = ord($encoded[$index++]) - 63;
+	    $result |= ($b & 0x1f) << $vshift;
+	    $vshift += 5;
+	    } while ($b >= 0x20);
+	$latlong[$latlong_ind] += ( ($result & 1) ? -($result>>1)-1 : ($result>>1));
+	push( @decoded, $latlong[$latlong_ind] / $precision_divider );
+	}
+    return @decoded;
+    };
+
+#########################################################################
+#	Compress a series of points into a string.			#
+#########################################################################
+$mapperp->{compress} = sub
+    {
+    my($precision,@points) = @_;
+    #$precision_multiplier = Math.pow(10, $precision);
+    my $precision_multiplier = 10 ** $precision;
+    my @encoded;
+    my $latlong_ind = 0;
+    my @last_latlong = ( 0, 0 );
+    foreach my $point ( @points )
+	{
+	## Round to N decimal places
+	my $latlong = int( $point * $precision_multiplier );
+
+	## Encode the differences between the points
+	push( @encoded, &{$mapperp->{encode_number}}($latlong - $last_latlong[$latlong_ind]) );
+
+	## Update our concept of last latitude or longitude
+	$last_latlong[$latlong_ind] = $latlong;
+	$latlong_ind = 1 - $latlong_ind;
+	}
+    return join("",@encoded);
+    };
+
+#########################################################################
+#	Return a string that is an encoded version of the number.	#
+#########################################################################
+$mapperp->{encode_number} = sub
+    {
+    my($num) = @_;
+    #$num = $num << 1;
+    $num *= 2;
+    $num = ~($num) if ($num < 0);
+    my @encoded;
+    while ($num >= 0x20)
+	{
+	push( @encoded, chr( (0x20 | ($num & 0x1f)) + 63 ) );
+	$num >>= 5;
+	#$num = int( $num / 0x20 );
+	}
+    push( @encoded, chr($num+63) );
+    return join("",@encoded);
+    };
+
+#########################################################################
+#	Unused testing							#
+#########################################################################
+$mapperp->{test_compress} = sub
+    {
+    my $s = &{$mapperp->{compress}}
+	(
+	${$mapperp->{PRECISION}},
+	45.967, -83.928700032549,
+	55, -83.928420000,
+	35, -83.97948699748273,
+	25.000000, -83.000000,
+	15.00000000000, -83.9279400000,
+	0.9600, -83.9275623435,
+	35.90, -0.90,
+	35.900, -83.00,
+	35.000, -83.000,
+	35.90000, -83.0000,
+	35.00000, -83.00000,
+	35.000004190, -83.00000123490,
+	);
+    my @points = &{$mapperp->{decompress}}( ${$mapperp->{PRECISION}}, $s );
+    print $s, " =>\n[", join(",",@points), "]\n";
+    };
+
+#########################################################################
+#	Return trkpt string from progress GPS list.			#
+#########################################################################
+$mapperp->{progress_to_tracks} = sub
+    {
+    my( $title, $input_p ) = @_;
+    return &{$mapperp->{tracks}}(
+	$title,
+	( $MAP_COLORS[ $input_p->{color}||0 ] || ( $input_p->{done} ? "blue" : "green" ) ),
+	@{$input_p->{progress_p}} );
+    };
+
+#########################################################################
+#	Add the stops to the event_list as waypoints			#
+#########################################################################
+$mapperp->{stops_to_waypoints} = sub
+    {
+    my( $title, $input_p )			= @_;
+    my($sec,$min,$hour,$mday,$month,$year)	= localtime($now);
+    my $stops					= $input_p->{stops};
+    my $display_order				= $input_p->{display_order};
+
+    my @ret = ( "<table style='border: solid black' border=1 cellspacing=0>" );
+
+    foreach my $stop ( map { $stops->[$_] } @{$display_order} )
+	{
+	next if( ! $stop->{coords} );
+	if ( $stop->{when} && $stop->{when} =~ /(\d+):(\d+)/ )
+	    { $hour=$1; $min=$2; }
+	my( $ind, @others ) = split( /,/, $stop->{patrons} );
+	push( @ret, &{$mapperp->{stop}}({
+	    ind		=>	$ind,
+	    time	=>	timelocal(0,$min,$hour,$mday,$month,$year),
+	    status	=>	($stop->{status}||""),
+	    note	=>	($stop->{notes}||"")
+	    } ) );
+	}
+    push( @ret, "</table>\n" );
+
+    return join("",@ret);
+    };
+
+#########################################################################
+#	$progress_p is a pointer to array of hashes containing		#
+#	time, latitude and longitude.  Only want array of 2-member	#
+#	arrays.								#
+#########################################################################
+$mapperp->{just_latlng} = sub
+    {
+    my( $input_p ) = @_;
+    return map{($_->{lat},$_->{lng})} @{$input_p->{progress_p}};
+    };
+
+#########################################################################
+#	Return a string with an encoded JPEG file.			#
+#########################################################################
+$mapperp->{progress_to_pic} = sub
+    {
+    my( $base, $bounds, $compressed_string, $uncompressed_string ) = @_;
+#    print "CMC progress_to_pic, base=$base bounds=",$bounds,
+#	" cs=",length($compressed_string),".<br>\n";
+    my $res = &COMMON::cache({
+	query=>"$main::CACHEDIR/$base.txt",
+	result=>"$main::CACHEDIR/$base.b64",
+	http=>${$mapperp->{STATICURL}},
+	method=>"GET",
+	args=>
+	    [
+	    "key=$main::MAPQUEST_KEY",
+	    "type=map",
+	    "imagetype=jpeg",
+	    "declutter=false",
+	    "traffic=4",
+	    #"shapeformat=cmp","shape=".${$mapperp->{SHAPE_PARMS}}."|cmp|enc:$compressed_string",
+	    "shape=".${$mapperp->{SHAPE_PARMS}}."|$uncompressed_string",
+	    "boundingBox=$bounds",
+	    "size=\@2x" ]
+	} );
+    #print "l now [",($res?length($res):"UNDEF"),"].<br>\n";
+    return $res;
+    };
+
+#########################################################################
+#	Return a mq file from the GPS list and the various stops.	#
+#########################################################################
+$mapperp->{progress} = sub
+    {
+    my( $title, @input_ps ) = @_;
+
+    my $input_p = shift(@input_ps);
+
+    my $boundp = &bounds( $input_p );
+    my $Bounds = join(',', map { "$_=$boundp->{$_}"	} @{$mapperp->{BOUNDS_ORDER}} );
+    my $bounds = join(',', map { $boundp->{$_}		} @{$mapperp->{BOUNDS_ORDER}} );
+    print STDERR "Bounds: $Bounds\nbounds: $bounds\n";
+
+    my $uncompressed_string =
+	join("|",map {($_->{lat}.",".$_->{lng})} @{$input_p->{progress_p}});
+
+    my $compressed_string =
+	&{$mapperp->{compress}}( ${$mapperp->{PRECISION}}, &{$mapperp->{just_latlng}}($input_p) );
+    $compressed_string =~ s+\\+\\\\+g;
+    #$compressed_string =~ s+@+\\@+g;
+#    print "route_filename=[",$input_p->{route_filename}||"UNDEF","]<br>\n",
+#	"bounds=$bounds.<br>\n,l=",length($compressed_string),".<br>\n";
+
+    return &COMMON::template( $mapperp->{template},
+	"%%TITLE%%", $title||"UNDEF",
+	"%%BOUNDS%%", $bounds||"UNDEF",
+	'%%COMPRESSED%%', $compressed_string||"UNDEF",
+	'%%UNCOMPRESSED%%', $uncompressed_string||"UNDEF",
+	'%%PIC%%',
+	    (
+	    &{$mapperp->{progress_to_pic}}(
+		sprintf("%s-%s-%s-%s",
+		    $input_p->{driver_filename},
+		    $input_p->{route_filename},
+		    $input_p->{distributor_filename},
+		    $input_p->{date}),
+		$bounds, $compressed_string, $uncompressed_string )
+	    ||"UNDEF"),
+	'%%ACTUAL_DATA%%',
+#&{$mapperp->{compress}}( ${$mapperp->{PRECISION}}, &{$mapperp->{just_latlng}}($input_p) )
+	    join("",
+		    #&{$mapperp->{progress_to_tracks}}($title,$input_p),
+		    &{$mapperp->{stops_to_waypoints}}($title,$input_p)
+		)
+	);
+    };
+
+#########################################################################
+#	Returns mqeese text for a stop but takes times, stati & note.	#
+#########################################################################
+$mapperp->{stop} = sub
+    {
+    my( $stop_argp )		= @_;
+    my $ind			= $stop_argp->{ind};
+    my $global_time_str		= &COMMON::time_string( $GLOBAL_TIME_FMT, $stop_argp->{time} );
+
+    $global_time_str =~ s/T/ /g;
+    $global_time_str =~ s/\.\d\d\d[A-Z]$//g;
+
+    my $addrtxt = &DBget($ind,"Address");
+    if( $addrtxt )
+	{ $addrtxt =~ s+^(.*?),(.*)+<nobr>$1</nobr><br>$2+; }
+    else
+	{ $addrtxt = "No address"; }
+
+    my( $lat, $lon )		= split(/,/, (&DBget($ind,"Coords")||"UNDEF") );
+
+    my $status = ($stop_argp->{status}||"No Status");
+    my $status_style = $main::STATUS_STYLES{$status} || "";
+    return join("",
+    	"<tr style='$status_style'>\n",
+    	"<th valign=top align=left>",(&DBget($ind,"Name")||"UNDEF"),"</th>\n",
+    	"<td valign=top>$global_time_str</td>\n",
+    	"<td valign=top>",
+    	( ($_=&DBget($ind,"Phone"))
+	    ? "<nobr><a href='tel:$_'>$_</a></nobr>"
+	    : "No phone" ), "</td>\n",
+    	"<td valign=top>",
+    	( $lat
+	    ? "<a href='http://maps.google.com/maps?q=$lat,$lon'>$addrtxt</a>"
+	    : $addrtxt ), "</td>\n",
+    	"<td valign=top>", $status, "</td>\n",
+    	"<td valign=top>", ($stop_argp->{note}||""), "</td>\n",
+    	"</tr>\n" );
+    };
+
+#########################################################################
+#########################################################################
+$mapperp->{tracks} = sub
+    {
+    my( $title, $linecolor, @coordlist ) = @_;
+    return
+	(
+	"<Folder>\n",
+	 &indent(__LINE__,
+	  "<name>Tracks for $title</name>\n",
+	  "<description>A list of tracks for $title</description>\n",
+	  "<visibility>1</visibility><open>0</open>\n",
+	  "<Placemark>\n",
+	  &indent(__LINE__,
+	   "<visibility>0</visibility><open>0</open>\n",
+	   "<styleUrl>#$linecolor</styleUrl>\n",
+	   "<name>The only track for $title</name>\n",
+	   "<description>The only track for $title</description>\n",
+	   "<LineString>",
+	   &indent(__LINE__,
+	    "<extrude>true</extrude>\n",
+	    "<tessellate>true</tessellate>\n",
+	    "<altitudeMode>clampToGround</altitudeMode>\n",
+	    "<coordinates>\n",
+	    &indent(__LINE__,
+	     join(" ",map{("$_->{lng},$_->{lat}")}@coordlist)),
+	    "</coordinates>\n"),
+	   "</LineString>\n"),
+	  "</Placemark>\n"),
+	"</Folder>\n"
+	);
+    };
+
+#########################################################################
+#	Creates a Mapquest pieces for each waypoint in expected route.	#
+#########################################################################
+$mapperp->{waypoints_from_expected} = sub
+    {
+    my( $title, $route_ind, @patron_order ) = @_;
+    print "CMC waypoints_from_expected.\n";
+    my @ret = ( "<table border=1>" );
+    foreach my $ind ( @patron_order )
+	{
+	push( @ret, &{$mapperp->{stop}}({
+	    ind		=>	$ind,
+	    time	=>	time(),
+	    status	=>	(&DBget($ind,"Status")||"No Status"),
+	    note	=>	(&DBget($ind,"Last_note")||"")
+	    }) );
+	}
+    push( @ret, "</table>\n" );
+    return join("",@ret);
+    };
+
+#########################################################################
+#	Creates a Mapquest file for the route specified.  Not		#
+#	necessarily route driver actually took, but something to	#
+#	compare against.						#
+#########################################################################
+$mapperp->{expected} = sub
+    {
+    my( $route_ind,
+	$distributor_ind,
+	$distributor_name,
+	$route_name,
+	$title,
+	@order ) = @_;
+
+    &setup_file( ">" .
+	join("/",
+	    $EXPECTED_DIR,
+	    &COMMON::text_to_filename($distributor_name),
+	    &COMMON::text_to_filename($route_name).".".$mapperp->{extension} ),
+	&COMMON::template( $mapperp->{template},
+	    "%%TITLE%%", $title,
+	    "%%ACTUAL_DATA%%",
+		join("",
+		    &{$mapperp->{tracks}}( $title, "red", @rt_coords ),
+		    &{$mapperp->{waypoints_from_expected}}( $title, $route_ind, @order)))
+	);
+    };
+
+1;

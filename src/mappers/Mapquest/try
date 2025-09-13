@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+RESULT=/var/www/routing/sto/testing.html
+
+#DISTRIBUTOR=${2:-Test_Distributor}
+#ROUTE=${1:-Test_Route_Maine_Pines}
+DISTRIBUTOR=${2:-MOW_Sagadahoc}
+ROUTE=Woolwich
+BASE="/var/log/routing/progress/$DISTRIBUTOR/Chris_Caldwell"
+INFILE=`ls $BASE/*-$ROUTE.po | tail -1`
+FILEBASE=`echo $INFILE | sed -e 's/\.po$//'`
+echo INFILE=$INFILE FILEBASE=$FILEBASE
+
+set -x
+
+cd /usr/local/projects/routing
+#./app.cgi pomap $FILEBASE.po $FILEBASE.mq
+./app.cgi pomap $FILEBASE.po -.mq > $RESULT
+echo "Result is in $RESULT"
+#perl $RESULT
+#sudo mv $RESULT /var/www/routing/sto/$ROUTE.jpg
+#sudo mv $RESULT /var/www/routing/sto/mq_$ROUTE.html

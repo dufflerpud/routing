@@ -1,0 +1,7 @@
+echo "# Routing_and_delivery" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/dufflerpud/Routing_and_delivery.git
+git push -u origin main

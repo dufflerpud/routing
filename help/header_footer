@@ -1,0 +1,18 @@
+#!/bin/sh
+
+for fn in $*; do
+    (
+    sed -e 's/^[ 	]*//' <<EOF
+	<html><head>
+	<link href='help.css' rel='stylesheet' type='text/css' />
+	</head><body>
+EOF
+    sed -e '1,/<body>/d' -e '/<hr/,$ d' -e '/<hr/,$ d' < $fn
+    sed -e 's/^[ 	]*//' <<EOF
+	<hr class='helpfoot'>
+	<button class='helpfoot' style='display:none;position:fixed;top:1%;left:1%' onClick='history.back(); return false;'>&larr;</button>
+	<button class='helpfoot' onClick='window.close();' old_onClick='parent.done_help();'>Done reading</button>
+	</body></html>
+EOF
+    ) > $fn.new
+done

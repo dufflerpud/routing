@@ -1,0 +1,46 @@
+Routines driver software exports to the rest of the world:
+
+  Used by anything that wants to send a link to a map.
+
+    route_to_url( $map_start, $map_end, @waypoints )
+	Return a URL suitable for generating a map of routes from the
+	starting address (or coordinates) to the ending points
+	via the waypoints.
+
+  Used by anything that wants to create a map file (vs. just a link)
+
+    progress( $title, @input_ps )
+	Return a string containing the resulting map or other formatted
+	graphical information file (e.g. kml, gpx etc) based on the
+	the listed stops and implied routes.
+
+  Used to determine most efficient route:
+
+    order_query( $first_stop, @waypoints, $last_stop )
+	Get the most efficient path from the first to the last stop
+	but not necessarily in order of the waypoints specified.
+	Note that his may not actually encompass the entire route
+	as we have the ability to prescribe the stops done at start and
+	the stops done at the end.  We only use this to re-order stops
+	in between.
+
+    expected( @addresses )
+	Return a list of lat,lon strings of not only the addresses, but
+	also points along the path between those addresses, preferably
+	on roads, and preferably the quickest possible path between the
+	two points (though NOT changing the order of the points).  This is
+	still getting flushed out.
+
+  Experimental to figure out how big routes should be given a limited number
+  of drivers.  These routines are called with chunks of addresses by
+  upper level software that doesn't care how the information is retrieved
+  (so we could use different sources if, say, Mapquest goes under).
+
+    geocode_batch( @addresses )
+	Return a list of latitude,longitude coordinates corresponding
+	to the provided list of addresses.
+
+    costs_batch( $starting_from_address, @rest_of_addresses )
+	Return a list of costs corresponding to the distances between
+	the first argument and the rest.  The first element of the list
+	will always be zero.

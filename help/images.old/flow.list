@@ -1,0 +1,52 @@
+<switchblock "first run">
+    <img src="images/01_first_run.jpg">
+</switchblock>
+
+<switchblock "top level">
+    <img src="images/02_top_level.jpg">
+</switchblock>
+
+<switchblock "pickup">
+    <img src="images/03_pickup.jpg">
+</switchblock>
+
+<switchblock "pickup vehicle">
+    <img src="images/04_pickup_vehicle.jpg">
+</switchblock>
+
+<switchblock "pickup odometer">
+    <img src="images/05_pickup_odometer.jpg">
+</switchblock>
+
+<switchblock "pickup status">
+    <img src="images/06_pickup_status.jpg">
+</switchblock>
+
+<switchblock "pickup done">
+    <img src="images/07_pickup_done.jpg">
+</switchblock>
+
+<switchblock "stop visit">
+    <img src="images/08_stop_visit.jpg">
+</switchblock>
+
+<switchblock "stop on the way">
+    <img src="images/09_stop_on_the_way.jpg">
+</switchblock>
+
+<switchblock "stop contribution">
+    <img src="images/10_stop_contribution.jpg">
+</switchblock>
+
+<switchblock "stop problems">
+    <img src="images/11_stop_problems.jpg">
+</switchblock>
+
+<switchblock "route done">
+    <img src="images/12_route_done.jpg">
+</switchblock>
+
+<switchblock "route done log miles">
+    <img src="images/13_route_done_log_miles.jpg">
+</switchblock>
+

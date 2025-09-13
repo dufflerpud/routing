@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KML EXAMPLE</title>
+    <style>
+	#map_canvas	{
+			width:	1100px;
+			height:	700px;
+			}
+    </style>
+
+<script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWmcffdTO2QrtWTRylCdYCSRcOVfqIabY&callback=initMap">
+</script>
+
+<script>
+/**
+ * @fileoverview Sample showing capturing a KML file click
+ *   and displaying the contents in a side panel instead of
+ *   an InfoWindow
+ */
+
+var map;
+/* var src = 'https://fs0.brightsands.com/~chris/kml.kml'; */
+var src = '%%MAP%%';
+
+/*
+ * Initializes the map and calls the function that creates polylines.
+ */
+function initialize()
+    {
+    map = new google.maps.Map(document.getElementById('map_canvas'),
+	{
+	center:		new google.maps.LatLng(-19.257753, 146.823688),
+	zoom:		2,
+	mapTypeId:	google.maps.MapTypeId.TERRAIN
+	});
+    loadKmlLayer(src, map);
+    }
+
+/*
+ * Adds a KMLLayer based on the URL passed. Clicking on a marker
+ * results in the balloon content being loaded into the messages section.
+ * @param {string} src A URL for a KML file.
+ */
+function loadKmlLayer(src, map)
+    {
+    var kmlLayer = new google.maps.KmlLayer( src,
+	{
+	suppressInfoWindows:	false,
+	map:			map
+	});
+    google.maps.event.addListener( kmlLayer, 'click', function(event)
+	{
+	var content		= event.featureData.infoWindowHtml;
+	var testimonial		= document.getElementById('messages');
+	testimonial.innerHTML	= content;
+	});
+    }
+
+/*
+ * Called when the mapper script has been loaded.
+ */
+function initMap()
+    {
+    window.addEventListener('load',initialize);
+    }
+
+</script>
+</head>
+
+<body>
+<center><table border=0>
+<tr width=100%><th id="map_canvas"></th></tr>
+<tr><th id="messages"></th></tr>
+</table></center>
+</body>
+</html>

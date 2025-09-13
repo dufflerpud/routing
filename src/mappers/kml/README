@@ -1,0 +1,13 @@
+Created from
+
+https://developers.google.com/static/kml/documentation/KML_Samples.kml
+
+I've really only tested the results on Google Maps and Google Earth.
+Other software seems to accept results well enough such as GPS
+Visualizer, but I haven't tested it beyond converting the results
+to a .gpx file.
+
+For now, this is the best way to visualize multiple route runs.
+
+Note the colors file which contains information specifying how
+different colors can be displayed.

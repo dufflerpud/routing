@@ -1,0 +1,40 @@
+#!/usr/bin/perl -w
+#
+use strict;
+my $KEY		='dxMEhIJ2eQ1jS8098HjxwiUj8W0xjJwH';
+my $INTRO	="https://www.mapquestapi.com/staticmap/v5/map?key=$KEY";
+my $WHERE	="Disney+World";
+my $SHAPE_PARMS	="fill:ffffff88|width:7mi|weight:4";
+my $OUTPUT	="/tmp/to_move.jpg";
+#my $COORDS	="28,-81|28,-80.25|27.25,-80.25|27.25,-81|28,-81";
+#my $COMPRESSED	="uajsFvh}qMlJsK??zKfQ??tk\@urAbaEyiC??y]{|AaPsoDa~\@wjEhUwaDaM{y\@??t~\@yY??DX";
+my $COMPRESSED	="%%COMPRESSED%%";
+my $UNCOMPRESSED="%%UNCOMPRESSED%%";
+
+my @urlpieces	= (
+			$INTRO,
+			#"center=$WHERE",
+			"type=map",
+			"imagetype=jpeg",
+			"declutter=false",
+			#"scenter=40.0337,-76.5047",
+			#"ecenter=39.9978,-76.3545",
+			"traffic=4",
+			"shapeformat=cmp","shape=$SHAPE_PARMS|cmp|enc:$COMPRESSED",
+			#"shape=$SHAPE_PARMS|$UNCOMPRESSED",
+			"boundingBox=%%BOUNDS%%",
+			"size=\@2x"
+			);
+
+print join("\n\t","URL:",@urlpieces),"\n";
+my $url = join('&',@urlpieces);
+#my $cmd = "wget -q -O $OUTPUT '$url'";
+my $cmd = "wget -O $OUTPUT '$url'";
+print "+ $cmd\n";
+system( $cmd );
+
+
+##wget -O /tmp/foo "https://www.mapquestapi.com/staticmap/v5/map?key=$KEY&shape=Disney+World%7Cwidth:7mi|weight:4&shape=$SHAPE|fill:ffffff88|border:ff000088&shape=border:333333|weight:5|cmp|enc:encoded_data&size=600,400@2x"
+#$wget -O /tmp/foo "https://www.mapquestapi.com/staticmap/v5/map?key=$KEY&center=Boston,MA&size=@2x"
+
+##wget -O /tmp/foo "https://www.mapquestapi.com/staticmap/v5/map?key=$KEY&shape=Disney+World%7Cwidth:7mi|weight:4&shape=28,-81|28,-80.25|27.25,-80.25|27.25,-81|28,-81|fill:ffffff88|border:ff000088&shape=border:333333|weight:5|cmp|enc:encoded_data&size=600,400@2x"

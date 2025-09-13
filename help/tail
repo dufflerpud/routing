@@ -1,0 +1,3 @@
+<button class='helpfoot' style='display:none;position:fixed;top:0%;left:0%' onClick='history.back(); return false;'>&larr;</button>
+<button class='helpfoot' style='position:fixed;top:1%;right:1%' onClick='(parent.done_help?parent.done_help():window.close());'>X</button>
+</body></html>

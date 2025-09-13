@@ -1,0 +1,193 @@
+<html><head>
+
+    <script src="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.css"/>
+
+    <link rel="stylesheet" href="common/all.css" />
+    <link rel="stylesheet" media="all and (max-device-width: 600px)" href="common/mobile.css" />
+    <link rel="stylesheet" media="all and (min-device-width: 600px)" href="common/desktop.css" />
+
+<style type='text/css'>
+@media print {
+    .no-print, .no-print * { display: none !important; }
+    a, a:visited { color: #000 !important; text-decoration:none; }
+    }
+@media not print {
+    .only-print, .only-print * { display: none !important; }
+    }
+
+.medbut		{
+			font-size: 30px;
+			text-align:	left;
+			}
+</style>
+
+<script type="text/javascript">
+%%INIT%%
+%%ROUTESJS%%
+</script>
+<title>%%TITLE%%</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+</head><body %%LIVE_JAVASCRIPT%%>
+%%HELP_IFRAME%%
+<form name=%%FORMNAME%% target=query_frame method=post action="%%COMPLETED_CGI%%">
+<input type=hidden name="SID" value="%%SID%%"/>
+<input type=hidden name="status_file" value="%%STATUS_FILE%%"/>
+<input type=hidden name="route_status_debug">
+<input type=hidden name="route_status_edit">
+<input type=hidden name="route_status_serial">
+<input type=hidden name="progress" />                 
+<center><table id=id_small_screen qborder=5 style='display:none' class=fixedtable>
+<tr><td width=100% height=100%><table class=fixedleft>
+    <tr>
+	<th align=left valign=top colspan=2>
+	<div align=left id=id_ind class=bigtext style='display:none'>id_ind</div>
+	<div align=left id=id_name class=bigtext>id_name</div>
+	<div align=left id=id_time_to qclass=bigtext>id_time_to</div>
+	<div align=left id=id_distance_to qclass=bigtext>id_distance_to</div>
+	</th></tr>
+    <tr id=id_route_type_line style='display:none' onClick='lightup("route_type");'>
+	    <td><button type=button><img src="common/route_type.jpg" style='height:50px;'/></button></td>
+	    <th align=left id=id_route_type>XL(Set route type)</th></tr>
+    <tr><th align=left valign=center width=1px>
+	<button onClick='make_call(current_stop);'><img src="common/phone.jpg" style='height:50px;'/></button><br>
+	<button onClick='make_text(current_stop);'><img src="common/texting.jpg" style='height:50px;'/></button>
+	</th>
+	<td id=id_phone valign=center
+	    style='font-size:175%'>XL(Phone number)</td></tr>
+    <tr><th align=left valign=center onClick='goto_map(current_stop);' width=1px>
+	<button type=button><img src="common/map.jpg" style='height:50px;'/></button></th>
+	<td id=id_addrtxt valign=center onClick='goto_map(current_stop);'
+	    style='font-size:175%'>XL(Map location)</td></tr>
+	<tr><th colspan=2 align=left id=id_prefs></th></tr>
+	<tr id=id_notes_line style='display:none' onClick='lightup("patron_issue");'>
+	    <td><button type=button><img src="common/note.jpg" style='height:50px;'/></button></td>
+	    <th align=left id=id_patron_issue>XL(Set notes)</th></tr>
+	<tr id=id_odometer_line style='display:none' onClick='lightup("odometer");'>
+	    <td><button type=button><img src="common/odometer.jpg" style='height:50px;'/></button></td>
+	    <th align=left id=id_odometer>XL(Set odometer)</th></tr>
+	<tr id=id_donation_line style='display:none' onClick='lightup("donation");'>
+	    <td><button type=button><img src="common/donation.jpg" style='height:50px;'/></button></td>
+	    <th align=left id=id_donation>XL(Set donation)</th></tr>
+	<tr id=id_pickup_line style='display:none' onClick='lightup("pickup");'>
+	    <td><button type=button><img src="common/pickups.jpg" style='height:50px;'/></button></td>
+	    <th align=left id=id_pickup>XL(Set pickups)</th></tr>
+	<tr id=id_status_line style='display:none' onClick='lightup("status");'>
+	    <td><button type=button><img src="common/status.jpg" style='height:50px;'/></button></td>
+	    <th align=left id=id_status>XL(Set status)</th></tr>
+    </table></td>
+    <td width=100% height=100%><table class=fixedright>
+        <tr><td align=right valign=top onClick='set_active(current_stop,-1);'>
+	    <button type=button class=bigbutt>&uarr;</button></td></tr>
+        <tr><td align=right valign=center onClick='set_active(-1,0);'>
+	    <button type=button class=bigbutt>&larr;</button></td></tr>
+        <tr><td align=right valign=bottom onClick='set_active(current_stop,1);'>
+	    <button type=button class=bigbutt>&darr;</button></td></tr>
+    </table></td></tr></table>
+</table>
+<div id=id_patron_issue_screen style='display:none'>
+    Notes:<br>
+    <textarea name=patron_issue id=id_patron_issue_value rows=14 cols=60 autofocus
+        onChange='set_attribute("notes",this.value,1);'></textarea>
+    <button type=button onClick='lightup("small");'>&crarr;</button>
+    </div>
+<table id=id_route_type_screen style='display:none'>
+    <tr>	<th>XL(Select route type)</th></tr>
+    <tr><td>
+	<input type=hidden id=id_route_type_value name=current_route_type>
+	%%ROUTE_TYPE_BUTTONS%%
+    </td></tr>
+</table>
+<table id=id_status_screen style='display:none'>
+    <tr>	<th>XL(Set status)</th></tr>
+    <tr><td>
+	<input type=hidden id=current_status name=current_status>
+	<button class=medbut id=Untouched onClick='set_status("Untouched",false);'>XL(Untouched)</button><br>
+	<button class=medbut id=Unvisited onClick='set_status("Unvisited",false);'>XL(Unvisited)</button><br>
+	<button class=medbut id=Normal onClick='set_status("Normal",false);'>XL(Normal)</button><br>
+	<button class=medbut id=Normal_dropoff onClick='set_status("Normal_Dropoff",false);'>XL(Dropoff as predetermined)</button><br>
+	<button class=medbut id=Skipped onClick='set_status("Skipped",false);'>XL(Skipped)</button><br>
+	<button class=medbut id=Skipped_Hospital onClick='set_status("Skipped_Hospital",false);'>XL(Skipped Hospital)</button><br>
+	<button class=medbut id=Skipped_Suspended onClick='set_status("Skipped_Suspended",false);'>XL(Skipped Suspended)</button><br>
+	<button class=medbut id=Skipped_Different_Route onClick='set_status("Skipped_Different_Route",false);'>XL(Skipped Different Route)</button><br>
+	<button class=medbut id=Skipped_Every_Other onClick='set_status("Skipped_Every_Other",false);'XL(>Skipped Every Other)</button><br>
+	<button class=medbut id=Problems onClick='set_status("Problems",false);'>XL(Problems)</button><br>
+	<button class=medbut id=Problems_Does_not_answer_phone_or_knock onClick='set_status("Problems_Does_not_answer_phone_or_knock",false);'>XL(Problems Does not answer phone or knock)</button><br>
+	<button class=medbut id=Issues onClick='set_status("Issues",false);'>XL(Issues)</button><br>
+    </td></tr>
+</table>
+<table id=id_odometer_screen style='display:none'>
+    <tr>	<th>XL(Enter odometer):</th></tr>
+    <tr>	<td><input type=number min=10.0 max=1000000.0
+		    inputmode=decimal
+		    autofocus
+		    id=id_odometer_value name=odometer size=8
+		    onChange='set_attribute("odometer",this.value,1)&&false;'></td></tr>
+    <tr>	<td><button type=button onClick='lightup("small");'>
+		    &crarr;</button></td></tr></table>
+<table id=id_donation_screen style='display:none'>
+    <tr>	<th align=left>XL(Donation):</th>
+    		<td>$<input type=number min=0.01 max=1000000.00
+		    inputmode=decimal
+		    autofocus
+		    id=id_donation_value name=donation size=8
+		    onChange='set_attribute("donation",this.value,0);'></td></tr>
+    <tr>	<th align=left>XL(Type):</th>
+		<th>
+		    <input type=hidden name=donation_type id=id_donation_type_value>
+		    <button id=id_Cash_button onClick='set_donation_type("Cash",1);'>XL(Cash)&crarr;</button>
+		    <button id=id_Check_button onClick='set_donation_type("Check",1);'>XL(Check)&crarr;</button>
+		</th></tr></table>
+<div id=id_debug_screen style='display:none'>
+    <button type=button onClick='lightup("big");'>XL(Dismiss)</button>
+    <button type=button onClick='generate_update(0);'>XL(Snapshot)</button>
+    <button type=button onClick='move_some();'>XL(Drive!)</button>
+    <div id=id_debug_data></div>
+</div>
+<table id=id_pickup_screen style='display:none'>
+    <tr>	<th>XL(Enter pickup):</th></tr>
+    <tr>	<td id=pickup_table_id></td></tr>
+    <tr>	<td><button type=button onClick='lightup("small");'>
+		    &crarr;</button></td></tr></table>
+<table id=id_big_screen frame=box cellspacing=0 cellpadding=2>
+<tr><th>
+    <table width=100% border=0>
+        <tr class='no-print' id=go_live_id><th colspan=5>
+	    <a href='%%LIVE_URL%%'>XL(Take) <em>%%ROUTE_NAME%%</em> XL(route live)</a></th></tr>
+        <tr class='only-print' id=go_live_id>
+	    <th width=1% valign=top align=middle>Go live!<br>%%LIVE_QRCODE%%</th>
+	    <th width=98% align=middle><table>
+		<tr><th align=left>XL(Route name):</th><td align=left>%%ROUTE_NAME%%</td></tr>
+		<tr><th align=left>XL(Driver name):</th><td align=left>%%STAFF_NAME%%</td></tr>
+		<tr><th align=left>XL(Site):</th><td align=left>%%DISTRIBUTOR_NAME%%</td></tr>
+		<tr><th align=left>XL(Technical support):</th><td align=left>Christopher Caldwell</td></tr>
+		<tr><th align=left></th><td align=left>207-841-7418</td></tr>
+		<tr><th align=left></th><td align=left>chris.interim@gmail.com</td></tr>
+	    </table></th>
+	    <th width=1% valign=top align=middle>Help!<br>%%HELP_QRCODE%%</th></tr>
+        <tr id=map_opts_id style='display:none'><th align=left colspan=3>
+	    <button type=button onClick='show_help("Driver.cgi");'>XL(Help)</button>
+	    <button type=button onClick='goto_map(-1);'>%%TITLE%% XL(map)</button>
+	</th></tr>
+    </table>
+    </th></tr>
+<tr><td id=id_big_screen_inset>%%BIG_TABLE%%</td></tr>
+<tr id=reset_id style='display:none;'><th>
+    <button type=button value='Update boss' onClick='generate_update(1);'>XL(Done)</button>
+    <button type=button id='Debug_id' style='display:none;' onClick='debug_page();'>XL(Debug)</button>
+    <button type=button value='Reroute' onClick='reroute();'>XL(Re-route)</button>
+    <button type=button value='Reset route' onClick='reset_route(1);'>XL(Reset route)</button>
+    </th></tr>
+    <tr><td id=position_trail></td></tr>
+</table>
+
+<iframe width=500px height=500px name=query_frame style='display:none;background-color:white' height=18px>XL(Not updated)</iframe>
+
+<div id=id_oneof_screen style='display:none'></div>
+
+<table id="id_map_screen" border=0 style='display:none;'>
+    <tr><th valign=middle onClick='lightup("big");'>
+        <button type=button>&larr;</button></th>
+	<td id="map" style="width: 100%; height: 530px;"></td></tr></table>
+
+</center></form></body></html>

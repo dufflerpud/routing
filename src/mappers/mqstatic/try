@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+RESULT=/tmp/mqstatic.html
+
+ROUTE=${1:-Woolwich}
+DISTRIBUTOR=${2:-MOW_Sagadahoc}
+BASE="/var/log/routing/progress/$DISTRIBUTOR"
+# 2025-04-28-Woolwich-Chris_Caldwell-1u9NwX.po
+INFILE=`ls $BASE/*-$ROUTE-*.po | tail -1`
+FILEBASE=`echo $INFILE | sed -e 's/\.po$//'`
+echo INFILE=$INFILE FILEBASE=$FILEBASE
+
+set -x
+
+/var/www/routing/sto/index.cgi pomap $FILEBASE.po -.mqstatic > $RESULT
+#cd /usr/local/projects/routing/src
+#./app.cgi pomap $FILEBASE.po -.mqstatic > $RESULT

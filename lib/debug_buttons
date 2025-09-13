@@ -1,0 +1,2 @@
+    <button type=button id='Debug_id' style='display:none;' onClick='generate_update(0);'>Debug</button>
+    <button type=button id='Drive_id' style='display:none;' onClick='move_some();'>Drive!</button>

@@ -1,0 +1,30 @@
+This seemed like SUCH a great idea:
+
+https://developer.mapquest.com/documentation/api/static-map/
+
+Software could use it to generate a .jpg file of the route
+the driver had actually taken and that could be included
+in the e-mail to the coordinator instead of a link to the
+mapquest website.
+
+It would be awesome, except the only way of sending the
+actual route would require sending a long list of GPS
+coordinates - and I don't care how well you compress it,
+you're not going to get it small enough where an even
+slightly interesting route can be sent with http GET.
+
+Mapquest appears not to support static mapping with POST
+(as confirmed by Mapquest support).
+
+Ended up sending coordinator link to a web page which
+can post the information to the live mapper.
+
+Why is that so bad?
+
+Firstly, this means that the coordinator must be on the
+Internet to view the map ... which they probably are if
+they are reading e-mail.
+
+But more importantly, the live map could be entirely
+different than when the driver drove the route.  Roads
+come, roads go.

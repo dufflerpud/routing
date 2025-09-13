@@ -1,0 +1,7 @@
+$VAR1 = {
+          'http' => 'http://www.mapquestapi.com/directions/v2/routeshape?key=dxMEhIJ2eQ1jS8098HjxwiUj8W0xjJwH&sessionId=AMAB_v___woAAQC8BAAAeNpj2MPCwMPAwMCekVqUapWcK2B2wogBCjiAEpwz7fxSGq3i0WkGLABmRt8SETMQP8tnyXEmoBm_yxL9LofYxMNo6fJEv-NAGp8ZqmLPJUD8D28VPoLMmHQq2S96mWU8jM4F0ilAGp8Z2Vp6YDM2cyxWAXmStzzLb91153hkehOQJtYMDjLN0GT6Jw7i__v__z_IHXv-ZvmtT3eJR6eJNYODTDNexvOD_TLhtc8BkDtWeOX5_bnoFQ-jm4C03CUvvGaoa7gbg_gqJd2e4Lg9kOE3e5prPIxmPJjhNxVI4zNjuzGvJIgvsvTjRJA7Ko0S_a6zusfD6GQg_QBI4zPDk7cI7I6519yWg9xxYnuK3855XvEw-iyQzpiH3y8qvvdNQfxEibZGkDtedmT6mbNpxMPoh0A6D0gTm9ZBNDxtY0vIIBqecLGmUgZICgOnKEIKGLGmLwZE2mAgWgFKygACWEpgxBbtIBoWzYxY4xQI4HGILcJANEoE1S72O9_EyMDgoMnByCDCwOHA6MAm_MKHpaGDg1NAh8GRmYEhgoHRRwCotIHBgQlWPjEwAAAaezPNmuyFIQ:car&fullShape=true',
+          'query' => '/usr/local/projects/routing/cache/.gps.q.json',
+          'result' => '/usr/local/projects/routing/cache/.gps.r.json',
+          'check' => ':',
+          'method' => 'POST'
+        };

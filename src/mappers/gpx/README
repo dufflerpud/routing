@@ -1,0 +1,26 @@
+Primarily view GPX files from either Google Maps or
+https://gpx.studio.  Did not try it with Garmin which
+is probably a pity since the primary users of GPX files
+these days are those with Garmin equipment.
+
+Spent quite a bit of time trying to figure out if I could color
+code the different waypoints and tracks to make it easier for
+the viewer to figure out which route they were looking at.
+
+Sadly, the GPX spec itself does not directly handle color,
+so any solution would be extension dependent and therefore
+depend on the viewer.
+
+Most of the testing was done with Google Maps which (surprise)
+prefers .kml files since Google controls the .kml spec.
+
+I was unable to find a spec that Google Maps recognized with
+.gpx files and since Google maps has no ability to export
+anything other than .kml files, I have no idea what (if any)
+extension it might use.
+
+And at this point, since I am the only user, I simply don't
+care.  I'm all for full generality until it actually requires
+work.
+
+Programmer leaves in a huff.

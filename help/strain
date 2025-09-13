@@ -1,0 +1,8 @@
+cat $* \
+    | grep -v "<html><head>" \
+    | grep -v "<link href='help.css' rel='stylesheet' type='text/css' />" \
+    | grep -v "</head><body>" \
+    | grep -v "<button class='helpfoot' style='display:none;position:fixed;top:0%;left:0%' onClick='history.back(); return false;'>&larr;</button>" \
+    | grep -v "<button class='helpfoot' style='position:fixed;top:1%;right:1%' onClick='(parent.done_help?parent.done_help():window.close());'>X</button>" \
+    | grep -v "</body></html>" \
+    | cat

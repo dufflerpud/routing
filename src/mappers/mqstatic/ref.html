@@ -1,0 +1,83 @@
+<html><head>
+    <script src="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.css"/>
+
+    <script type="text/javascript">
+    var STOPS = [{"distance_to":"15.4","pickups":"","total_distance_to":"42.8","coords":"43.91513,-69.96864","status":"Unvisited","route_from":"-1","time_ref":"1220","total_time_to":"4116","prefs":"","time_to":"1220","address":"35 Union St.,Brunswick,ME,04011,US","patrons":"D_4","ind":"","name":"MOW Brunswick","phone":"(207)837-0934","addrtxt":"35 Union St.,Brunswick,ME,04011","note":"","navrules":"","distance_ref":"15.4","type":"Distributor"},{"distance_to":"12.3","pickups":"","total_distance_to":"12.3","coords":"43.925159,-69.777107","status":"Untouched","route_from":"0","time_ref":"1050","total_time_to":"1050","prefs":"","time_to":"1050","address":"129 Barley Neck Rd.,Woolwich,ME,04530","patrons":"P_30","ind":"","name":"Rosie Gilmore","phone":"(207)443-5191","addrtxt":"129 Barley Neck Rd.,Woolwich,ME,04530","note":"","navrules":"","distance_ref":"12.3","type":"Patron"},{"distance_to":"1.4","pickups":"","total_distance_to":"13.7","coords":"43.94106,-69.783401","status":"Untouched","route_from":"1","time_ref":"219","total_time_to":"1269","prefs":"&lt;span style=&sbquo;color:black;background-color:#ffff30&sbquo;&gt;cat&lt;/span&gt;","time_to":"219","address":"134 Nequasset St.,Woolwich,ME,04530,US","patrons":"P_2Z","ind":"","name":"Rosalie Presby","phone":"(207)442-8842","addrtxt":"134 Nequasset St.,Woolwich,ME,04530","note":"","navrules":"","distance_ref":"1.4","type":"Patron"},{"distance_to":"","pickups":"","total_distance_to":"13.7","coords":"43.94106,-69.783401","status":"Untouched","route_from":"2","time_ref":"","total_time_to":"1269","prefs":"&lt;span style=&sbquo;color:black;background-color:#30ffff&sbquo;&gt;dog&lt;/span&gt;, &lt;span style=&sbquo;color:black;background-color:#ffff30&sbquo;&gt;cat&lt;/span&gt;","time_to":"","address":"134 Nequasset St.,Woolwich,ME,04530,US","patrons":"P_2Y","ind":"","name":"Charles Presby","phone":"(207)522-0603","addrtxt":"134 Nequasset St.,Woolwich,ME,04530","note":"","navrules":"","distance_ref":"","type":"Patron"},{"distance_to":"3.3","pickups":"","total_distance_to":"17","coords":"43.983891,-69.778581","status":"Untouched","route_from":"3","time_ref":"302","total_time_to":"1571","prefs":"&lt;span style=&sbquo;color:black;background-color:#ffff30&sbquo;&gt;cat&lt;/span&gt;","time_to":"302","address":"1047 Middle Rd., Woolwich, ME","patrons":"P_2bp","ind":"","name":"Betsy Mosier","phone":"(207)233-4630","addrtxt":"1047 Middle Rd., Woolwich, ME","note":"","navrules":"","distance_ref":"3.3","type":"Patron"},{"distance_to":"2.1","pickups":"","total_distance_to":"19.1","coords":"44.00365,-69.75924","status":"Untouched","route_from":"4","time_ref":"192","total_time_to":"1763","prefs":"&lt;span style=&sbquo;color:black;background-color:#30ffff&sbquo;&gt;2 dogs&lt;/span&gt;, &lt;span style=&sbquo;color:black;background-color:#ffff30&sbquo;&gt;cat&lt;/span&gt;","time_to":"192","address":"116 Hedge Bridge Rd., Woolwich, ME","patrons":"P_2bg","ind":"","name":"Susan Weiland","phone":"(207)656-7005","addrtxt":"116 Hedge Bridge Rd., Woolwich, ME","note":"","navrules":"","distance_ref":"2.1","type":"Patron"},{"distance_to":"5.6","pickups":"","total_distance_to":"24.7","coords":"43.97284,-69.7418","status":"Untouched","route_from":"5","time_ref":"668","total_time_to":"2431","prefs":"&lt;span style=&sbquo;color:black;background-color:#30ffff&sbquo;&gt;dog&lt;/span&gt;","time_to":"668","address":"30 Brawn Dr., Woolwich, ME","patrons":"P_2cO","ind":"","name":"Arthur Brawn","phone":"(207)443-3893","addrtxt":"30 Brawn Dr., Woolwich, ME","note":"","navrules":"","distance_ref":"5.6","type":"Patron"},{"distance_to":"0.8","pickups":"","total_distance_to":"25.5","coords":"43.976009,-69.73707","status":"Untouched","route_from":"6","time_ref":"139","total_time_to":"2570","prefs":"&lt;span style=&sbquo;color:black;background-color:#c0c0ff&sbquo;&gt;USDA box&lt;/span&gt;","time_to":"139","address":"901 Old Stage Rd.,Woolwich,ME,04530,US","patrons":"P_2V","ind":"","name":"Donna Moreau","phone":"(207)443-5155","addrtxt":"901 Old Stage Rd.,Woolwich,ME,04530","note":"Upper driveway becomes unpassable during the mud season so, when in doubt, park below.\n\nWhen you call ahead, she will usually tell you to just leave the food on the porch.","navrules":"","distance_ref":"0.8","type":"Patron"},{"distance_to":"0.4","pickups":"","total_distance_to":"25.9","coords":"43.977564,-69.731587","status":"Untouched","route_from":"7","time_ref":"57","total_time_to":"2627","prefs":"","time_to":"57","address":"266 Walker Rd., Woolwich, ME","patrons":"P_2dM","ind":"","name":"Rita Melville","phone":"(207)389-6983","addrtxt":"266 Walker Rd., Woolwich, ME","note":"","navrules":"","distance_ref":"0.4","type":"Patron"},{"distance_to":"1.5","pickups":"","total_distance_to":"27.4","coords":"43.96951,-69.72478","status":"Untouched","route_from":"8","time_ref":"269","total_time_to":"2896","prefs":"","time_to":"269","address":"112 Mountain Rd., Woolwich, ME","patrons":"P_2ca","ind":"","name":"Phyllis Schoenfeldt","phone":"(207)443-2146","addrtxt":"112 Mountain Rd., Woolwich, ME","note":"","navrules":"","distance_ref":"1.5","type":"Patron"},{"distance_to":"","pickups":"","total_distance_to":"27.4","coords":"43.96951,-69.72478","status":"Untouched","route_from":"9","time_ref":"","total_time_to":"2896","prefs":"","time_to":"","address":"112 Mountain Rd., Woolwich, ME","patrons":"P_2dL","ind":"","name":"Donna McKinnon","phone":"(207)443-2146","addrtxt":"112 Mountain Rd., Woolwich, ME","note":"Please use back door as front door is not accessible during the winter","navrules":"","distance_ref":"","type":"Patron"},{"distance_to":"15.4","pickups":"","total_distance_to":"42.8","coords":"43.91513,-69.96864","status":"Unvisited","route_from":"10","time_ref":"1220","total_time_to":"4116","prefs":"","time_to":"1220","address":"35 Union St.,Brunswick,ME,04011,US","patrons":"D_4","ind":"","name":"MOW Brunswick","phone":"(207)837-0934","addrtxt":"35 Union St.,Brunswick,ME,04011","note":"","navrules":"","distance_ref":"15.4","type":"Distributor"}];
+
+    var WAYPOINTS = new Array();
+    for( var i=0; i<STOPS.length; i++ )
+        { WAYPOINTS.push( STOPS[i].address ); }
+
+    function anyMarker( location, stopNumber )
+	{
+	return L.mapquest.textMarker( location.latLng,
+	    {
+	    draggable: false,
+	    //text: location['street']+' ('+location['sideOfStreet']+')',
+	    text:  STOPS[stopNumber].name,
+	    type: 'marker',
+	    icon:
+		{
+		primaryColor:	'#22407F',
+		secondaryColor:	'#3B5998',
+		size:		'sm',
+		shadow:		true,
+		symbol:		stopNumber-1
+		}
+	    });
+	}
+
+    window.onload = function()
+	{
+	L.mapquest.key = 'dxMEhIJ2eQ1jS8098HjxwiUj8W0xjJwH';
+
+	var directions = L.mapquest.directions();
+	var start_point = WAYPOINTS.shift();
+	var end_point = WAYPOINTS.pop();
+	directions.route(
+	    {
+	    start:	start_point,
+	    waypoints:	WAYPOINTS,
+	    end:	end_point
+	    }, createMap);
+
+	function createMap(err, response)
+	    {
+	    // var map = L.mapquest.map('custom-directionsLayer-map',
+	    var map = L.mapquest.map('map',
+		{
+		center:	[0, 0],
+		layers:	L.mapquest.tileLayer('map'),
+		zoom:	12
+		});
+
+	    var DirectionsLayerWithCustomMarkers =
+		L.mapquest.DirectionsLayer.extend(
+		    {
+		    createStartMarker:
+			function( location, stopNumber )
+			    { return anyMarker(location,stopNumber); }
+			,
+
+		    createWaypointMarker:
+			function( location, stopNumber )
+			    { return anyMarker(location,stopNumber); }
+			,
+
+		    createEndMarker:
+			function(location, stopNumber)
+			    { return anyMarker(location,stopNumber); }
+		    });
+
+	    directionsLayer = new DirectionsLayerWithCustomMarkers(
+		{
+		directionsResponse: response
+		}).addTo(map);
+	    }
+	}
+    </script>
+</head><body style="border: 0; margin: 0;">
+    <div id="map" style="width: 100%; height: 530px;"></div>
+</body>
+</html>

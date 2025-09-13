@@ -1,0 +1,9 @@
+html		{
+		-webkit-text-size-adjust: none;
+		touch-action: pan-y; /*prevent user scaling*/
+		}
+
+*		{
+		-webkit-text-size-adjust: none;
+		text-size-adjust: none;
+		}
