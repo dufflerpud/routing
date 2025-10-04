@@ -31,10 +31,26 @@ use Data::Dumper;
 use List::Util qw(min max);
 
 use lib "/usr/local/lib/perl";
-use COMMON;
+use cpi_cache;
+use cpi_cgi;
+use cpi_compress_integer;
+use cpi_db;
+use cpi_file;
+use cpi_filename;
+use cpi_hash;
+use cpi_help;
+use cpi_qrcode_of;
+use cpi_send_file;
+use cpi_setup;
+use cpi_template;
+use cpi_time;
+use cpi_translate;
+use cpi_user;
+use cpi_vars;
+use cpi_inlist;
 
-$COMMON::TABLE_TAGS	= "bgcolor=\"#c0c0d0\"";
-$COMMON::TABLE_TAGS	= "USECSS";
+$cpi_vars::TABLE_TAGS	= "bgcolor=\"#c0c0d0\"";
+$cpi_vars::TABLE_TAGS	= "USECSS";
 
 #print "Content-type:  text/plain\n\n";
 #close( STDOUT );	open( STDOUT, "> /stdout" );
@@ -49,64 +65,66 @@ select($old_fh);
 
 package main;
 
-&COMMON::setup(
+&cpi_setup::setup(
 	stderr=>"routing",
 	Qrequire_captcha=>1,
 	preset_language=>"en",
-	anonymous_funcs=>"map_with_custom_header,export_with_custom_header,anonymous_new_record,anonymous_add_record"
+	anonymous_funcs=>"map_with_custom_header,export_with_custom_header,anonymous_new_record,anonymous_add_record,anonymous_new_form"
 	);
 
 print STDERR <<EOF;
-PROG=$COMMON::PROG
-BASEDIR=$COMMON::BASEDIR
+PROG=$cpi_vars::PROG
+BASEDIR=$cpi_vars::BASEDIR
 EOF
 
 #########################################################################
 #	Constant declarations.						#
 #########################################################################
 
-my $LIB 		= $COMMON::BASEDIR."/lib";
-my $SRC 		= $COMMON::BASEDIR."/src";
-my $PRETTY_PROG		= ucfirst( (split(/\//,$COMMON::BASEDIR))[-1] );
+my $LIB 		= $cpi_vars::BASEDIR."/lib";
+my $SRC 		= $cpi_vars::BASEDIR."/src";
+my $PRETTY_PROG		= ucfirst( (split(/\//,$cpi_vars::BASEDIR))[-1] );
 
 my %TEMPLATES =		# This used to be much larger
     (
     "html"		=> $LIB."/template.html"
     );
 
-my $ROUTINGJS 		= $LIB."/${COMMON::PROG}_header.js";
-my $ROUTEORDERJS	= $LIB."/${COMMON::PROG}_order.js";
+my $ROUTINGJS 		= $LIB."/${cpi_vars::PROG}_header.js";
+my $ROUTEORDERJS	= $LIB."/${cpi_vars::PROG}_order.js";
 my $COLOR_MAP_FILE	= $LIB."/colors";
 my $MAPPER_DIR		= $SRC."/mappers";
 
 our $FORMNAME		= "form";
-our $CACHEDIR 		= "$COMMON::BASEDIR/cache";
+$cpi_vars::CACHEDIR 	= "$cpi_vars::BASEDIR/cache";
 my $DEST_DIR		= "routes";
-my $DEST_HTTP		= "/var/www/routing$COMMON::OFFSET/$DEST_DIR";
-my $DOMAIN		= "Brightsands.com";
-my $MAILSRC		= "routing\@$DOMAIN";
-my $BASE_URL		= "http://routing.$DOMAIN$COMMON::OFFSET";
-my $BASES_URL		= "https://routing.$DOMAIN$COMMON::OFFSET";
+my $DEST_HTTP		= "/var/www/routing$cpi_vars::OFFSET/$DEST_DIR";
+$cpi_vars::DOMAIN	= "Brightsands.com";
+my $MAILSRC		= "routing\@$cpi_vars::DOMAIN";
+my $BASE_URL		= "http://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
+my $BASES_URL		= "https://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
 #my $GOOGLE_KML		= "$BASE_URL/google_kml.html";
-my $URL			= "$BASES_URL/$DEST_DIR";
-#my $PROG_URL		= $BASES_URL.($ENV{SCRIPT_NAME}||($COMMON::PROG.".cgi"));
+$cpi_vars::URL			= "$BASES_URL/$DEST_DIR";
+#my $PROG_URL		= $BASES_URL.($ENV{SCRIPT_NAME}||($cpi_vars::PROG.".cgi"));
 my $PROG_URL		= $BASES_URL."/index.cgi";
+$PROG_URL = $BASES_URL."/index-test.cgi" if(($ENV{SCRIPT_NAME}||"") =~ /-test/);
 my $PROJLONG		= "Routing";
 my $PROJECT		= "Routing";
-my $PROG		= ( $_=$0, s+.*/++g, s/\..*//, $_ );
+$cpi_vars::PROG		= ( $_=$0, s+.*/++g, s/\..*//, $_ );
 my $LOGDIR		= "/var/log/$PROJECT";
 my $PATRON_DIR		= "$LOGDIR/patrons";
 my $TRIPS_DIR		= "$LOGDIR/trips";
 my $HTML_DIR		= "$LOGDIR/html";
 my $PROGRESS_DIR	= "$LOGDIR/progress";
+my $ASSESSMENT_DIR	= "$LOGDIR/assessments";
 my $PROGRESS_URL	= "$BASE_URL/progress";
-my $DISABLED		= "$COMMON::BASEDIR/disabled.html";
-my $DISTRIBUTOR_DIR	= "$COMMON::BASEDIR/Distributors";
+my $DISABLED		= "$cpi_vars::BASEDIR/disabled.html";
+my $DISTRIBUTOR_DIR	= "$cpi_vars::BASEDIR/Distributors";
 my $EXPECTED_DIR	= "$LOGDIR/expected";
 my $EXPECTED_URL	= "$BASE_URL/expected";
 my $INDENT_JSON		= "/usr/local/bin/indent_json";
-my $INVOICES_DIR	= "$COMMON::BASEDIR/invoices";
-my $DISTUSER_TO_PDF	= "$COMMON::BASEDIR/bin/distuser_to_pdf";
+my $INVOICES_DIR	= "$cpi_vars::BASEDIR/invoices";
+my $DISTUSER_TO_PDF	= "$cpi_vars::BASEDIR/bin/distuser_to_pdf";
 my $INDENTATION		= " ";
 my $ALLOW_RESET_WINDOW	= 1;
 my @DECODE_ORDER	= ( "when", "lat", "lng" );
@@ -114,9 +132,11 @@ my $STANDARD_DATE_FMT	= "%04d-%02d-%02d";
 my $GLOBAL_TIME_FMT	= "%04d-%02d-%02dT%02d:%02d:%02d.000Z";
 my $WKHTMLTOPDF		= "/usr/local/bin/wkhtmltopdf";
 
-my $COSTSDIR		= $COMMON::BASEDIR."/costs";
+my $COSTSDIR		= $cpi_vars::BASEDIR."/costs";
 
-my $EXIT_FILE		= $COMMON::BASEDIR."/exit_reason.txt";
+my $EXIT_FILE		= $cpi_vars::BASEDIR."/exit_reason.txt";
+my $FORM_URL		= "$BASES_URL/forms";
+my $FORM_DIR		= "/var/www/routing$cpi_vars::OFFSET/forms";
     
 # This used to decode FORM{progress} everytime the driver's
 # browser updated, but since users only rarely track the
@@ -126,7 +146,7 @@ my $EXIT_FILE		= $COMMON::BASEDIR."/exit_reason.txt";
 my %ARGS =		# Right now, no way to change these default values.
     (
     "r"			=>	"mapquest",
-    "l"			=>	"/var/www/routing$COMMON::OFFSET/routes"
+    "l"			=>	"/var/www/routing$cpi_vars::OFFSET/routes"
     );
 
 my %PHONE_HANDLERS =
@@ -203,7 +223,7 @@ my %PHONE_HANDLERS =
 
 my %DEFAULT_HEADER =
     (
-    "from"	=> "$PROJLONG route update <$PROJECT\@$DOMAIN>",
+    "from"	=> "$PROJLONG route update <$PROJECT\@$cpi_vars::DOMAIN>",
     "to0"	=> "dalward\@seniorsplus.org",
     "to1"	=> "treed\@spectrumgenerations.org",
     "to2"	=> "erowe\@spectrumgenerations.org",
@@ -223,7 +243,7 @@ our %STATUS_STYLES =
     "Issues"	=> &BLACK_ON("#ffff00"),
     "Normal"	=> &BLACK_ON("#d0ffd0")
     );
-my $SENDMAIL		= "/usr/lib/sendmail";
+$cpi_vars::SENDMAIL		= "/usr/lib/sendmail";
 
 my @DAY_NAMES = ("Sun","Mon","Tue","Wed","Thu","Fri","Sat");
 
@@ -454,6 +474,9 @@ my %TABLE_FIELDS =
 	        header		=> "Coordinator's note",
 		anoninvisible	=> 1,
 		handler		=> \&Field_Textarea },
+	      {	Name		=> "Assessor_note",
+		header		=> "Assessor's note",
+		handler		=> \&Field_Textarea },
 	      {	Name		=> "Driver_note",
 	        header		=> "Driver's note",
 		anoninvisible	=> 1,
@@ -543,6 +566,7 @@ my %TEXTARGS =
 my %TEXTAREAARGS =
     (
     "Driver_note"	=> "rows=10 cols=40",
+    "Assessor_note"	=> "rows=10 cols=40",
     "Coordinator_note"	=> "rows=10 cols=40",
     "Pickups"		=> "rows=10 cols=40",
     "Last_note"		=> "rows=10 cols=40"
@@ -626,20 +650,11 @@ my $allow_reset_window		= $ALLOW_RESET_WINDOW;
 my $now				= time();
 
 print STDERR "--- "
-	. &COMMON::time_string("%04d-%02d-%02d %02d:%02d:%02d",$now)
+	. &cpi_time::time_string("%04d-%02d-%02d %02d:%02d:%02d",$now)
 	. " pid=$$ ---\n";
 print STDERR join("\n    ","Form:",
-	map { "$_=[$COMMON::FORM{$_}]" } sort keys %COMMON::FORM ), "\n"
-	if( %COMMON::FORM );
-
-#########################################################################
-#	Return true if the first item appears in the remaining list.	#
-#########################################################################
-sub inlist
-    {
-    my( $item, @list ) = @_;
-    return grep( $_ eq $item, @list );
-    }
+	map { "$_=[$cpi_vars::FORM{$_}]" } sort keys %cpi_vars::FORM ), "\n"
+	if( %cpi_vars::FORM );
 
 #########################################################################
 #	Return the plural form of a word.				#
@@ -683,10 +698,10 @@ function footerfunc( func0 )
 </script>
 <form name=footerform method=post>
 <input type=hidden name=func>
-<input type=hidden name=SID value="$COMMON::SID">
-<input type=hidden name=USER value="$COMMON::USER">
-<center class='no-print'><table $COMMON::TABLE_TAGS border=1>
-<tr><th><table $COMMON::TABLE_TAGS><tr><th
+<input type=hidden name=SID value="$cpi_vars::SID">
+<input type=hidden name=USER value="$cpi_vars::USER">
+<center class='no-print'><table $cpi_vars::TABLE_TAGS border=1>
+<tr><th><table $cpi_vars::TABLE_TAGS><tr><th
 EOF
     push( @toprint,
 	"><input type=button help='index' onClick='show_help(\"index.cgi\");' value='XL(Help)'" );
@@ -699,7 +714,7 @@ EOF
 	    ( ($butdest eq $mode) ? " style='background-color:#50a0c0'" : "" ),
 	    " value=\"$buttext\"\n" );
 	}
-    foreach my $button ( "admin:$COMMON::USER XL(account)" )
+    foreach my $button ( "admin:$cpi_vars::USER XL(account)" )
         {
 	my( $butdest, $buttext ) = split(/:/,$button);
 	$buttext = ucfirst( $buttext );
@@ -709,14 +724,14 @@ EOF
 	    " value=\"$buttext\"\n" );
 	}
     push( @toprint, ">",
-	&COMMON::logout_select(
+	&cpi_user::logout_select(
 	    ($mode eq "admin" ? "form" : "footerform"),
 	    "footerfunc"
 	    ),<<EOF);
 	</th></tr>
 	</table></th></tr></table></center></form></div>
 EOF
-    &COMMON::xprint( @toprint );
+    &cpi_translate::xprint( @toprint );
     }
 
 #########################################################################
@@ -725,35 +740,35 @@ EOF
 sub check_if_app_needs_header
     {
     #return 1;
-    #my $res = ($COMMON::FORM{func}!~/(stickers|vcf|html|log|invoices|local)/);
-    my $res = ($COMMON::FORM{func}!~/with_custom_header/);
-    #print "check_if_app_needs_header($COMMON::FORM{func}) = ",($res||0),".\n";
+    #my $res = ($cpi_vars::FORM{func}!~/(stickers|vcf|html|log|invoices|local)/);
+    my $res = ($cpi_vars::FORM{func}!~/with_custom_header/);
+    #print "check_if_app_needs_header($cpi_vars::FORM{func}) = ",($res||0),".\n";
     return $res;
     }
 
 #########################################################################
 #	Avoid some typing.  Make prettier code.				#
 #########################################################################
-sub DBread	{ return &COMMON::dbread	( $COMMON::DB	);	}
-sub DBwrite	{ return &COMMON::dbwrite	( $COMMON::DB	);	}
-sub DBpop	{ return &COMMON::dbpop		( $COMMON::DB	);	}
-sub DBget	{ return &COMMON::dbget		( $COMMON::DB,@_);	}
-sub DBput	{ return &COMMON::dbput		( $COMMON::DB,@_);	}
-sub DBdelkey	{ return &COMMON::dbdelkey	( $COMMON::DB,@_);	}
-sub DBadd	{ return &COMMON::dbadd		( $COMMON::DB,@_);	}
-sub DBdel	{ return &COMMON::dbdel		( $COMMON::DB,@_);	}
-sub DBnewkey	{ return &COMMON::dbnewkey	( $COMMON::DB,@_);	}
+sub DBread	{ return &cpi_db::dbread	( $cpi_vars::DB	);	}
+sub DBwrite	{ return &cpi_db::dbwrite	( $cpi_vars::DB	);	}
+sub DBpop	{ return &cpi_db::dbpop		( $cpi_vars::DB	);	}
+sub DBget	{ return &cpi_db::dbget		( $cpi_vars::DB,@_);	}
+sub DBput	{ return &cpi_db::dbput		( $cpi_vars::DB,@_);	}
+sub DBdelkey	{ return &cpi_db::dbdelkey	( $cpi_vars::DB,@_);	}
+sub DBadd	{ return &cpi_db::dbadd		( $cpi_vars::DB,@_);	}
+sub DBdel	{ return &cpi_db::dbdel		( $cpi_vars::DB,@_);	}
+sub DBnewkey	{ return &cpi_db::dbnewkey	( $cpi_vars::DB,@_);	}
 
 #########################################################################
 #	Display the HTML file for the route, substituting as required.	#
 #########################################################################
 sub show_route
     {
-    my $fname = $COMMON::URL;
-    $fname = $COMMON::URL;	# Get rid of only seen once error above
-    $fname =~ s+/[^/]*$+/$COMMON::FORM{arg}.html+;
-    &COMMON::xprint( &COMMON::template( $fname, "%%USER%%", $COMMON::USER ) );
-    &COMMON::cleanup( 0 );
+    my $fname = $cpi_vars::URL;
+    $fname = $cpi_vars::URL;	# Get rid of only seen once error above
+    $fname =~ s+/[^/]*$+/$cpi_vars::FORM{arg}.html+;
+    &cpi_translate::xprint( &cpi_template::template( $fname, "%%USER%%", $cpi_vars::USER ) );
+    &cpi_file::cleanup( 0 );
     }
 
 #########################################################################
@@ -773,18 +788,18 @@ sub findkeys
 #########################################################################
 sub authenticate
     {
-    &fatal("Incorrectly formatted URL.",0)
-        if( ! $COMMON::FORM{auth} || $COMMON::FORM{auth} !~ /(.*):(.*)/ );
+    &cpi_file::fatal("Incorrectly formatted URL.")
+        if( ! $cpi_vars::FORM{auth} || $cpi_vars::FORM{auth} !~ /(.*):(.*)/ );
     my( $secret_type, $secret_value ) = ( $1, $2 );
     my $auth_string = &DBget( "A_$secret_type" );
     my( $compare, $stored ) = ( $auth_string =~ /^(.*?):(.*)/ ? ($1,$2) : ("","") );
-    #print "auth=$COMMON::FORM{auth} st=$secret_type sv=$secret_value cv=$compare.<br>\n";
-    &fatal("URL has incorrect or old authenticator."
+    #print "auth=$cpi_vars::FORM{auth} st=$secret_type sv=$secret_value cv=$compare.<br>\n";
+    &cpi_file::fatal("URL has incorrect or old authenticator."
 	. "  Get a new QR code from your coordinator.",0)
 	if( !$compare || $compare ne $secret_value );
     foreach my $pc ( split(/&/,$stored) )
 	{
-	$COMMON::FORM{$1}=$2 if( $pc=~/^(.*?)=(.*)$/ );
+	$cpi_vars::FORM{$1}=$2 if( $pc=~/^(.*?)=(.*)$/ );
 	}
     }
 
@@ -794,7 +809,7 @@ sub authenticate
 sub create_auth
     {
     my( @args ) = @_;
-    if( ! $COMMON::FORM{auth} )
+    if( ! $cpi_vars::FORM{auth} )
 	{
 	my @to_store_pieces;
 	while( my $arg = shift(@args) )
@@ -802,15 +817,15 @@ sub create_auth
 	    push( @to_store_pieces, "$arg=".shift(@args) );
 	    }
 	my $to_store = join("&",@to_store_pieces);
-	my $secret_type = &COMMON::hashof( $to_store );
+	my $secret_type = &cpi_hash::hashof( $to_store );
 	my $secret_cookie = &secret_id();
 	#print "CREATING NEW AUTH for [$secret_type]:  $secret_cookie.<br>\n";
 	&DBwrite();
 	&DBput( "A_$secret_type", $secret_cookie . ":" . $to_store );
 	&DBpop();
-	$COMMON::FORM{auth} = "${secret_type}:${secret_cookie}";
+	$cpi_vars::FORM{auth} = "${secret_type}:${secret_cookie}";
 	}
-    return $COMMON::FORM{auth};
+    return $cpi_vars::FORM{auth};
     }
 
 #########################################################################
@@ -823,15 +838,15 @@ sub user_to_staffind
 
     foreach my $checkind ( &DBget("Staff") )
 	{
-	if( (&DBget($checkind,"User")||"") eq $COMMON::USER )
+	if( (&DBget($checkind,"User")||"") eq $cpi_vars::USER )
 	    {
 	    print STDERR "user_to_staffind() returns $checkind.\n";
 	    return $user_staffind = $checkind;
 	    }
 	}
 
-    &fatal("Cannot find the user "
-	. ($COMMON::USER||"UNDEF") . " in the staff database.");
+    &cpi_file::fatal("Cannot find the user "
+	. ($cpi_vars::USER||"UNDEF") . " in the staff database.");
     }
 
 #########################################################################
@@ -842,14 +857,14 @@ sub patron_to_distributor
     {
     my( $patron_ind ) = @_;
     my $route_string = &DBget( $patron_ind, "Route" );
-    &fatal("Patron ".&DBget($patron_ind,"Name")." is not part of any route.")
+    &cpi_file::fatal("Patron ".&DBget($patron_ind,"Name")." is not part of any route.")
 	if( ! $route_string );
     foreach my $route_ind ( split( /,/, $route_string ) )
 	{
 	my $distributor_ind = &DBget( $route_ind, "Distributor" );
 	return $distributor_ind if( $distributor_ind );
 	}
-    &fatal("None of patron ".&DBget($patron_ind,"Name")."'s routes"
+    &cpi_file::fatal("None of patron ".&DBget($patron_ind,"Name")."'s routes"
 	. " ($route_string) have a distributor.");
     }
 
@@ -861,7 +876,7 @@ sub user_in_record_list
     {
     my( $ind, $fld ) = @_;
 
-    return 1 if( $COMMON::USER eq "anonymous" );
+    return 1 if( $cpi_vars::USER eq "anonymous" );
 
     my $ret = 0;
     if( my $commalist = &DBget($ind,$fld) )
@@ -903,7 +918,7 @@ sub i_can
     my $distributor_ind;
 
     # All hail the programmer.  Bow down before me ...
-    if( &COMMON::in_group($COMMON::USER,"routing_administrator") )
+    if( &cpi_user::in_group($cpi_vars::USER,"routing_administrator") )
         { $ret = 1; }
     elsif ( $tbl eq "Staff" && ! $ind )
         { $ret = 1; }
@@ -963,23 +978,23 @@ sub update_record
     my @tbl_fields =
 	map { $_->{Name}}
 		grep( !($_->{app_ro}), &fields_of($tbl) );
-    print STDERR map {"$ind.$_ = $COMMON::FORM{$_}<br>\n"} @tbl_fields;
+    print STDERR map {"$ind.$_ = $cpi_vars::FORM{$_}<br>\n"} @tbl_fields;
 
-    if( $COMMON::FORM{Expires} )
+    if( $cpi_vars::FORM{Expires} )
         {
-	if( $COMMON::FORM{Expires} eq "today" )
-	    { $COMMON::FORM{Expires} = &COMMON::time_string("%04d-%02d-%02d"); }
-	elsif( $COMMON::FORM{Expires} eq "tomorrow" )
+	if( $cpi_vars::FORM{Expires} eq "today" )
+	    { $cpi_vars::FORM{Expires} = &cpi_time::time_string("%04d-%02d-%02d"); }
+	elsif( $cpi_vars::FORM{Expires} eq "tomorrow" )
 	    {
-	    $COMMON::FORM{Expires}
-		= &COMMON::time_string("%04d-%02d-%02d",time()+(60*60*24));
+	    $cpi_vars::FORM{Expires}
+		= &cpi_time::time_string("%04d-%02d-%02d",time()+(60*60*24));
 	    }
-	$COMMON::FORM{Name} =~ s/ on \d\d\d\d-\d\d-\d\d$//;
-	$COMMON::FORM{Name} .= " on $COMMON::FORM{Expires}";
+	$cpi_vars::FORM{Name} =~ s/ on \d\d\d\d-\d\d-\d\d$//;
+	$cpi_vars::FORM{Name} .= " on $cpi_vars::FORM{Expires}";
 	}
     foreach my $fld ( @tbl_fields )
 	{
-	my $v = $COMMON::FORM{$fld};
+	my $v = $cpi_vars::FORM{$fld};
 	if( ! defined($v) )
 	    { $v=""; }
 	else
@@ -996,7 +1011,7 @@ sub update_record
 	    $v =~ s/ +/_/g;
 	    }
         &DBput( $ind, $fld, $v );
-        &DBput( "Last", $COMMON::USER, $fld, $v );
+        &DBput( "Last", $cpi_vars::USER, $fld, $v );
 	}
     &DBput( $ind, "Distributor", $1 )
         if( $tbl eq "Patron" && ! &DBget( $ind, "Distributor" ) &&
@@ -1060,9 +1075,9 @@ sub new_tagged_key
     {
     my( $tbl ) = @_;
     my $ret = substr($tbl,0,1) . "_" . &DBnewkey();
-    #&COMMON::xprint( "Creating new $tbl key:  $ret<br>\n" );
+    #&cpi_translate::xprint( "Creating new $tbl key:  $ret<br>\n" );
     my $checkname = &DBget($ret,"Name");
-    &fatal(
+    &cpi_file::fatal(
 	"new_tagged_key($tbl) created $ret which already exists ($checkname)")
 	if( $checkname );
     return $ret;
@@ -1164,9 +1179,9 @@ sub filename_of
     {
     my( $ind ) = @_;
     my $name_of_ind = &DBget($ind,"Name");
-    &fatal("Filename_of($ind) fails due to lack of name.")
+    &cpi_file::fatal("Filename_of($ind) fails due to lack of name.")
         if( ! defined($name_of_ind) );
-    return &COMMON::text_to_filename( $name_of_ind );
+    return &cpi_filename::text_to_filename( $name_of_ind );
     }
 
 #########################################################################
@@ -1185,7 +1200,7 @@ sub Field_SelectFromDb
 		push( @toprint,
 		    "<a href='javascript:submit_func(\"$here/Show,",
 			$fp->{db}, ",$sfdind\");'>",
-		    &COMMON::filename_to_text( &DBget( $sfdind, "Name" ) || ""),
+		    &cpi_filename::filename_to_text( &DBget( $sfdind, "Name" ) || ""),
 		    "</a><br>" );
 		}
 	    }
@@ -1202,7 +1217,7 @@ sub Field_SelectFromDb
 		$val,
 		( map { (
 		    $_,
-		    &COMMON::filename_to_text(&DBget($_,"Name") || ""),
+		    &cpi_filename::filename_to_text(&DBget($_,"Name") || ""),
 		    "" ) }
 		    &dbsort( &ordered_list($fp->{db},&DBget($fp->{db})) ) ) ) );
 	}
@@ -1224,7 +1239,7 @@ sub Field_SelectFromList
 	    {
 	    foreach my $v ( split(/,/,$val) )
 		{
-		my $prettyv = &COMMON::filename_to_text($v);
+		my $prettyv = &cpi_filename::filename_to_text($v);
 		my $style = $SELECT_FROM_LIST_HASH{$typearg}{$v}{style};
 		push( @toprint0,
 		    ( $style
@@ -1245,11 +1260,31 @@ sub Field_SelectFromList
 		$val,
 		( map { (
 		    $_->{name},
-		    &COMMON::filename_to_text($_->{name}),
+		    &cpi_filename::filename_to_text($_->{name}),
 		    $_->{style} ) } @entries )
 		) ) );
 	}
     return join("",@toprint);
+    }
+
+#########################################################################
+#	Return URL to directions to the specified address.		#
+#########################################################################
+sub address_to_url
+    {
+    my( $addr ) = @_;
+    return "http://maps.google.com/maps?q=$addr";
+    }
+
+#########################################################################
+#	Return URL to call a phone number.				#
+#########################################################################
+sub phone_to_url
+    {
+    my( $phone ) = @_;
+    my $clean = $phone;
+    $clean =~ s/[^\d]//g;
+    return "tel:$clean";
     }
 
 #########################################################################
@@ -1274,9 +1309,9 @@ sub Field_Text
 	}
     else
 	{
-	#&fatal("$fieldname is null") if( ! defined($val) );
+	#&cpi_file::fatal("$fieldname is null") if( ! defined($val) );
 	$val = "" if( ! defined($val) );
-        my $html_safe_val	= &COMMON::safe_html($val);
+        my $html_safe_val	= &cpi_cgi::safe_html($val);
 	if( $TABLE_FIELDS{$typearg} )
 	    {
 	    push( @toprint,
@@ -1295,7 +1330,8 @@ sub Field_Text
 	elsif( $typearg eq "Address" )
 	    {
 	    # See https://gearside.com/easily-link-to-locations-and-directions-using-the-new-google-maps/
-	    push( @toprint, "<a target=routemap href='http://maps.google.com/maps?q=$val'>" );
+	    push( @toprint, "<a target=routemap href='",
+	        &address_to_url($val),"'>" );
 	    if( $val =~ /^(.*),\s*([^,]+),\s*([A-Z][A-Z]),\s*(.*?)$/gms )
 		{
 		my( $pretown, $town, $state, $poststate ) = ( $1, $2, $3, $4 );
@@ -1319,7 +1355,7 @@ sub Field_Text
 #	    push( @toprint,
 #		"<a target='${PROG}_map' href='$GOOGLE_KML?",
 #		    join(",",
-#		        &COMMON::text_to_filename(&DBget($ind,"Distributor")),
+#		        &cpi_filename::text_to_filename(&DBget($ind,"Distributor")),
 #			&filename_of($ind),
 #			&filename_of($driver_ind),
 #			$route_date), "'>",
@@ -1410,7 +1446,7 @@ sub Field_Textarea
 	}
     else
     	{
-        my $html_safe_val	= &COMMON::safe_html($val);
+        my $html_safe_val	= &cpi_cgi::safe_html($val);
 	if( $fieldname eq "Last_note" )
 	    {
 	    push( @toprint,
@@ -1499,7 +1535,7 @@ sub Field_Dispatch
     {
     my($mod,$tbl,$ind,$fp,$val)	= @_;
     
-    my $lastval = (&DBget("Last",$COMMON::USER,$fp->{Name}) || "");
+    my $lastval = (&DBget("Last",$cpi_vars::USER,$fp->{Name}) || "");
      
     return
         #(( $mod eq "r" && (!defined($val)||($val eq "")) )
@@ -1552,15 +1588,15 @@ sub show_record
 <input type=hidden name=ind value="$args{ind}">
 EOF
 
-    if( $COMMON::FORM{auth} || $args{anonmode} )
+    if( $cpi_vars::FORM{auth} || $args{anonmode} )
         {
-	$COMMON::FORM{auth} =
+	$cpi_vars::FORM{auth} =
 	    &create_auth(
 		"rectype", $args{tbl},
 		"distind", $defaults{Distributor} )
-	    if( ! $COMMON::FORM{auth} );
+	    if( ! $cpi_vars::FORM{auth} );
 	push(@toprint,
-	    "<input type=hidden name=auth value='$COMMON::FORM{auth}'>\n");
+	    "<input type=hidden name=auth value='$cpi_vars::FORM{auth}'>\n");
 	}
 
     push( @toprint, &pretty_message( $args{msg} ) );
@@ -1569,16 +1605,16 @@ EOF
 	{
 	my $live_url = join("&",
 	    "$PROG_URL?func=anonymous_new_record",
-	    "auth=$COMMON::FORM{auth}");
-	my $live_qrcode = &COMMON::qrcode_of( $live_url, {encoding=>"image"} );
-	push( @toprint, &COMMON::template(
+	    "auth=$cpi_vars::FORM{auth}");
+	my $live_qrcode = &cpi_qrcode_of::qrcode_of( $live_url, {encoding=>"image"} );
+	push( @toprint, &cpi_template::template(
 	    "$DISTRIBUTOR_DIR/".&filename_of($defaults{Distributor})."/$args{tbl}.html",
 	    "%%LIVE_URL%%", $live_url,
 	    "%%LIVE_QRCODE%%", $live_qrcode ) );
 #	push( @toprint,
 #	    "<center><span Qclass='only-print'><a href='$live_url'>",
 #	    $live_url, "<br>",
-#	    &COMMON::qrcode_of( $live_url, {encoding=>"image"} ),
+#	    &cpi_qrcode_of::qrcode_of( $live_url, {encoding=>"image"} ),
 #	    "</a></span></center>\n" );
 	}
 
@@ -1674,6 +1710,15 @@ EOF
 		"\n    };\n</script>\n" );
 	    }
 
+    #my $staffinds = ( $args{Route} ? &DBget( $args{Route}, "Driver" ) : undef );
+	my $staffinds;
+	if( $args{tbl} eq "Patron" )
+	    {
+	    my $distind = &patron_to_distributor( $args{ind} );
+	    $staffinds = join(",",
+		grep( &staff_from_distributor($_,$distind), &DBget("Staff") ) );
+	    }
+
 	push( @toprint, "<tr><th colspan=2>",
 	    ( $here !~ /\// ? ""
 	    : "<input type=button help='button_larr' class='no-print' onClick='submit_func(\"$here/Back\");' value='&larr;'>\n" ),
@@ -1682,6 +1727,8 @@ EOF
 	    ( &i_can(__LINE__,"w",$args{tbl}) ? "<input type=button help='button_Delete' onClick='confirm(\"Are you sure?\") && submit_func(\"$here/Delete\");' value='XL(Delete)'>\n" : "" ),
 	    ( ($args{tbl} ne "Patron" && $args{tbl} ne "Staff") ? () :
 		( "<input type=button help='button_Download_contact' onClick='submit_func(\"$here/vcf_with_custom_header,$args{tbl},$args{ind}\");' value='XL(Download contact)'>\n" ) ),
+	    ( $args{tbl} ne "Patron" ? () :
+		&routing_select( $args{tbl}, "assessment", "assessment", $staffinds ) ),
 	    ( $args{tbl} ne "Staff" ? () :
 		( "<input type=button help='button_Download_invoices' onClick='submit_func(\"$here/invoices_with_custom_header,$args{tbl},$args{ind}\");' value='XL(Download invoices)'>\n" ) ),
 	    ( $args{tbl} ne "Distributor" ? () :
@@ -1707,7 +1754,7 @@ EOF
 
 	push( @toprint, &show_search(tbl=>$search_table,lvl=>1,defvals=>"$args{tbl}=$args{ind}",$args{tbl}=>$args{ind}) )
 	    if( ! $args{editmode}
-	     && $search_table && ($COMMON::FORM{"S_$args{tbl}"}=&DBget($args{ind},"Name")) );
+	     && $search_table && ($cpi_vars::FORM{"S_$args{tbl}"}=&DBget($args{ind},"Name")) );
 
 	push( @toprint, "</span>\n" );
 
@@ -1745,9 +1792,9 @@ EOF
 	    }
 	}
     push( @toprint, "</center></form>\n" );
-    &COMMON::xprint( @toprint );
+    &cpi_translate::xprint( @toprint );
     &footer($args{tbl}) if( ! $args{anonmode} );
-    &COMMON::cleanup( 0 );
+    &cpi_file::cleanup( 0 );
     }
 
 #########################################################################
@@ -1768,24 +1815,24 @@ sub http_json
     {
     my( $base, $site, $contents ) = @_;
     #print STDERR "CMC http_json( $site ) with args [<br>", join(",<br>",@args), "]<br>\n";
-    my $result = &COMMON::cache(
+    my $result = &cpi_cache::cache(
 	$contents
 	? {
-	query		=>"$CACHEDIR/$base.q.json",
-	result		=>"$CACHEDIR/$base.r.json",
+	query		=>"$cpi_vars::CACHEDIR/$base.q.json",
+	result		=>"$cpi_vars::CACHEDIR/$base.r.json",
 	check		=>":",
 	http		=>$site,
 	contents	=>$contents,
 	method		=>"POST" }
 	: {
-	query		=>"$CACHEDIR/$base.q.json",
-	result		=>"$CACHEDIR/$base.r.json",
+	query		=>"$cpi_vars::CACHEDIR/$base.q.json",
+	result		=>"$cpi_vars::CACHEDIR/$base.r.json",
 	check		=>":",
 	http		=>$site,
 	method		=>"POST"
 	} );
     #print STDERR "CMC returned [$result]<br>\n";
-    #print "query in $CACHEDIR/$base.q.json, results in $CACHEDIR/$base.r.json .<br>\n";
+    #print "query in $cpi_vars::CACHEDIR/$base.q.json, results in $cpi_vars::CACHEDIR/$base.r.json .<br>\n";
     return ( $result ? decode_json( $result ) : undef );
     }
 
@@ -1805,13 +1852,13 @@ sub batch
 	my $to_get = min( $to_return - $from_index, $max_items );
 	my @res = &{$routine}( @args[$from_index..($from_index+$to_get-1)] );
 	$num_got = scalar(@res);
-	&fatal("Batch tried to get $to_get results and only got $num_got.")
+	&cpi_file::fatal("Batch tried to get $to_get results and only got $num_got.")
 	    if( scalar(@res) != $to_get );
 	push( @ret, @res );
 	print "to_return=$to_return to_get=$to_get num_got=$num_got.<br>\n";
 	}
     $num_got = scalar(@ret);
-    &fatal("batch expecting $to_return but returning $num_got.")
+    &cpi_file::fatal("batch expecting $to_return but returning $num_got.")
         if( $to_return != $num_got );
     #exit(1);
     return @ret;
@@ -1904,7 +1951,7 @@ sub make_stop_list
 #	Return stops ordered by name but 1st key will be start of route	#
 #	and last key will be end of route.				#
 #########################################################################
-sub reorder
+sub optimize_order
     {
     my( @stoplist ) = @_;
     #print "reorder(",join(",",@stoplist),").<br>\n";
@@ -1971,10 +2018,10 @@ sub route_to_url
 sub coords_to_qrcode
     {
     my $url = &route_to_url( $DEFAULT_MAPPER, @_ );
-    #return $url . "<br>" . &COMMON::qrcode_of( $url, {encoding=>"image"} );
+    #return $url . "<br>" . &cpi_qrcode_of::qrcode_of( $url, {encoding=>"image"} );
     return
         "<span class='only-print'>"
-      .	&COMMON::qrcode_of( $url, {encoding=>"image"} )
+      .	&cpi_qrcode_of::qrcode_of( $url, {encoding=>"image"} )
       .	"</span>";
     }
 
@@ -2121,7 +2168,7 @@ sub one_entry
 #########################################################################
 sub secret_id
     {
-    return &COMMON::compress_integer($now);
+    return &cpi_compress_integer::compress_integer($now);
     }
 
 #########################################################################
@@ -2149,7 +2196,7 @@ sub make_stop
 	    if( &rec_type($ind,"Patron") && ! &DBget($ind,"Last_seen") );
 	$stop{$stop_name}{preferences}	= join(",",@prefs);
 	$stop{$stop_name}{prefs} =
-	    &COMMON::safe_html(&prefs_to_html( $stop{$stop_name}{preferences}));
+	    &cpi_cgi::safe_html(&prefs_to_html( $stop{$stop_name}{preferences}));
 	$stop{$stop_name}{prefs} 	=~ s/'/&sbquo;/g;
 	$stop{$stop_name}{note}		= &DBget($ind,"Driver_note");
 	$stop{$stop_name}{pickups}	= &DBget($current_route,"Pickups",$ind);
@@ -2191,7 +2238,7 @@ sub get_patron_order
     $current_staff		= &DBget( $route_ind, "Driver" );
     $current_distributor	= &DBget( $route_ind, "Distributor" );
     my @patrons			= &patrons_on( $route_ind );
-    setup_stops( $current_route, @patrons );
+    &setup_stops( $current_route, @patrons );
 
     foreach my $patron ( @patrons )
 	{
@@ -2211,7 +2258,7 @@ sub get_patron_order
     if( ! $points{beginend} )
         {
 	# No endpoints or distributor points?  Used to make guess.
-	&fatal( "No MOW Staff or MOW Staff specified.\n" .
+	&cpi_file::fatal( "No MOW Staff or MOW Staff specified.\n" .
 	    	"You probably want to add one before proceeding.\n" )
 	    if( ! $points{distributor} );
 
@@ -2268,7 +2315,7 @@ sub get_patron_order
     my @stoplist = &make_stop_list();
 
     if( !($_=&DBget($route_ind,"Order")) )
-        { return &reorder(@stoplist); }
+        { return &optimize_order(@stoplist); }
     else
     	{
 	my @ranges = &get_route_ranges( $_, $route_ind );
@@ -2277,7 +2324,7 @@ sub get_patron_order
 	return
 	    (
 	    @{$ranges[0]},
-	    &reorder($begin_optimize,@{$ranges[1]},$end_optimize),
+	    &optimize_order($begin_optimize,@{$ranges[1]},$end_optimize),
 	    @{$ranges[2]}
 	    );
 	}
@@ -2347,7 +2394,7 @@ sub setup_mappers_list
     {
     if( ! %mappers )
 	{
-	foreach my $fmt ( &COMMON::files_in( $MAPPER_DIR ) )
+	foreach my $fmt ( &cpi_file::files_in( $MAPPER_DIR ) )
 	    {
 	    my $mapper_dir = "$MAPPER_DIR/$fmt";
 	    next if( ! -r ($_ = "$mapper_dir/lib.pl") );
@@ -2371,7 +2418,7 @@ sub setup_mappers_list
 	    else
 	        {
 		eval(
-		    &COMMON::template( $mappers{$fmt}{lib},
+		    &cpi_template::template( $mappers{$fmt}{lib},
 		        "%%THIS%%", $fmt ) );
 	        }
 #	    print "ERROR in ",$mappers{$fmt}{lib}, ":\n$@\n"
@@ -2397,7 +2444,7 @@ sub mappers_list
 my %COLORMAP;
 sub read_colormap
     {
-    my @lines = &read_lines( $COLOR_MAP_FILE );
+    my @lines = &cpi_file::read_lines( $COLOR_MAP_FILE );
     my ( @field_names ) = split(/\s+/,shift(@lines));
     while( $_ = shift(@lines) )
 	{
@@ -2455,7 +2502,7 @@ sub all_expected
 sub stops_to_patrons
     {
     my @patrons = grep( &rec_type($_,"Patron"), @_ );
-    &fatal("Route has no patrons on it yet.") if( ! @patrons );
+    &cpi_file::fatal("Route has no patrons on it yet.") if( ! @patrons );
     return @patrons;
     }
 
@@ -2559,7 +2606,7 @@ sub contacts_to_html
 
     $bag_types =
 	join(", ",
-	    map{ "'".&COMMON::text_to_filename($_)."'" }
+	    map{ "'".&cpi_filename::text_to_filename($_)."'" }
 		split(/,/,$bag_types) );
 
     my $jtable_json = &encode_json( \@jtable );
@@ -2577,8 +2624,8 @@ sub contacts_to_html
     my @jscripts =
         map { &{$mappers{$_}{js}}($dist) }
 	    sort &mappers_list("js");
-    my $template = &COMMON::template( $TEMPLATES{html},
-        "%%ROUTESJS%%", 	&read_file( "$SRC/routes.js" ),
+    my $template = &cpi_template::template( $TEMPLATES{html},
+        "%%ROUTESJS%%", 	&cpi_file::read_file( "$SRC/routes.js" ),
 	"%%MAPPERSJS%%",	join("",@jscripts) );
 
     if( $ARGS{l} )
@@ -2611,7 +2658,7 @@ sub contacts_to_html
 		else
 		    {
 		    open( INCSRC, $incsrc )
-			|| &fatal("Cannot read ${incsrc}:  $!");
+			|| &cpi_file::fatal("Cannot read ${incsrc}:  $!");
 		    my @incsrc_lines;
 		    my $incsrc_ln;
 		    my $incsrc_lno=0;
@@ -2632,7 +2679,7 @@ sub contacts_to_html
 		    push( @epieces,
 			"<$tag", $preincsrc, "incsrc='", $incsrc, "'",
 			$postincsrc, ">\n",
-			#&read_file( $incsrc ),
+			#&cpi_file::read_file( $incsrc ),
 			$inc_src_contents,
 			$tagbody, "\n",
 			"</$tag>\n" );
@@ -2648,7 +2695,7 @@ sub contacts_to_html
 	map {
 	    "<button class=medbut id=id_${_}_button " .
 	    " onClick='set_route_type(\"$_\",1);'>" .
-	    &COMMON::filename_to_text($_) . "</button><br>\n"
+	    &cpi_filename::filename_to_text($_) . "</button><br>\n"
 	    } split(/,/) );
 
     $current_staff =
@@ -2660,18 +2707,18 @@ sub contacts_to_html
     my $current_staff_name = &DBget($current_staff,"Name");
     my $secret = &secret_id();
     my $status_file = sprintf( "%s/%s-%s-%s-%s",
-	&COMMON::text_to_filename( $current_distributor_name ),
-	&COMMON::time_string($STANDARD_DATE_FMT,$now),
-	&COMMON::text_to_filename($current_route),
-	&COMMON::text_to_filename($current_staff_name),
+	&cpi_filename::text_to_filename( $current_distributor_name ),
+	&cpi_time::time_string($STANDARD_DATE_FMT,$now),
+	&cpi_filename::text_to_filename($current_route),
+	&cpi_filename::text_to_filename($current_staff_name),
 	$secret
 	);
 	
-    return &COMMON::subst_list( &COMMON::help_strings( &COMMON::xlate( $template ) ),
+    return &cpi_template::subst_list( &cpi_help::help_strings( &cpi_translate::xlate( $template ) ),
 	"%%SID%%",			"RT_".$secret,
 	"%%USER%%",			"anonymous",
 	"%%FORMNAME%%",			$FORMNAME,
-	"%%HELP_IFRAME%%",		$COMMON::HELP_IFRAME,
+	"%%HELP_IFRAME%%",		$cpi_vars::HELP_IFRAME,
 	"%%INIT%%",			$INIT,
 	"%%TITLE%%",			$TITLE,
 	"%%ROUTE_TYPE_BUTTONS%%",	$route_type_buttons,
@@ -2686,9 +2733,18 @@ sub contacts_to_html
     }
 
 #########################################################################
+#	Staff member works for distributor.				#
+#########################################################################
+sub staff_from_distributor
+    {
+    my( $staff_ind, $dist_ind ) = @_;
+    return &inlist($staff_ind,split(/,/,&DBget($dist_ind,"Contact")));
+    }
+
+#########################################################################
 #	Returns true if patron is on this route.			#
 #########################################################################
-sub is_on_route
+sub patron_from_route
     {
     my( $patron_ind, $route_ind ) = @_;
     return &inlist($route_ind,split(/,/,&DBget($patron_ind,"Route")));
@@ -2701,7 +2757,7 @@ sub patrons_on
     {
     my( $route_ind ) = @_;
     my @ret =
-        grep( &DBget($_,"Status") eq "Active" && &is_on_route($_,$route_ind),
+        grep( &DBget($_,"Status") eq "Active" && &patron_from_route($_,$route_ind),
 	    &DBget("Patron") );
     return @ret;
     }
@@ -2719,7 +2775,7 @@ sub map_name_to_ind
 	return $ind if( $ind eq $name || &DBget($ind,"Name") eq $name );
 	}
     return $retval if( defined($retval) );
-    &fatal("Cannot map $name to an index in the $table table.");
+    &cpi_file::fatal("Cannot map $name to an index in the $table table.");
     }
 
 #########################################################################
@@ -2746,17 +2802,17 @@ sub do_one_route
     if( $dest !~ /\@/ )
 	{
 	print "Writing $route_name to $dest.\n";
-	&COMMON::write_file($dest,$html_table);
+	&cpi_file::write_file($dest,$html_table);
 	}
     else
         {
-	&COMMON::sendmail(
+	&cpi_send_file::sendmail(
 	    $MAILSRC,
 	    $dest,
 	    "$route_name generated for $dest",
 	    $html_table );
 	}
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
@@ -2835,6 +2891,7 @@ EOF
 
     push( @ret, <<EOF );
 END:VCARD
+
 EOF
     return join("",@ret);
     }
@@ -2917,10 +2974,10 @@ sub html_to_pdf
         { $html_file = $html_contents; }
     else
 	{
-	$html_file = &COMMON::tempfile(".html");
-	&write_file( $html_file, $html_contents );
+	$html_file = &cpi_file::tempfile(".html");
+	&cpi_file::write_file( $html_file, $html_contents );
 	}
-    my $ret = &read_file(
+    my $ret = &cpi_file::read_file(
 	"$WKHTMLTOPDF --print-media-type $html_file - 2>/dev/null |" );
     }
 
@@ -2941,6 +2998,211 @@ sub contacts_to_stickers
     }
 
 #########################################################################
+#	Create a assessment form from a template.			#
+#########################################################################
+sub dump_assessment
+    {
+    my( $fnc, $tbl, $ind ) = @_;
+    my $pass;
+    my $contents = &read_file( "$cpi_vars::BASEDIR/lib/assessment.html" );
+
+    my $staffind;
+    my $distind;
+    my $dest_type = "display";
+    my $hashedval;
+
+    if( $fnc &&
+	$fnc =~ /(assessment)_(with_custom_header|with_normal_header|to_email)/)
+        {
+	$pass = "need_javascript";
+	$dest_type = $2;
+	$distind = &DBget($ind,"Distributor");
+	$staffind = $1 if( $cpi_vars::FORM{func}=~/,,(S_.*?)$/ );
+	}
+    elsif( ($ENV{HTTP_REFERER}||"") =~ m:/(\w+),(\w+),(\w+),(\w+)\.html$: )
+        {
+	$pass = "use_form";
+	$dest_type = "filled_out";
+	$distind = $1;
+	$ind = $2;
+	$staffind = $3;
+	$hashedval = $4;
+	&DBread();
+	}
+
+#    print join("<br>\n",
+#	"pass="		.($pass			||"UNDEF"),
+#       "distind="	.($distind		||"UNDEF"),
+#       "ind="		.($ind			||"UNDEF"),
+#       "staffind="	.($staffind		||"UNDEF"),
+#	"func="		.($cpi_vars::FORM{func}	||"UNDEF"),
+#       "hashedval="	.($hashedval		||"UNDEF"),
+#	"");
+
+    my @pieces;
+    foreach my $piece ( split(/(%%P_.+?%%|%%S_.+?%%)/,$contents) )
+        {
+	if( $piece !~ /%%(P|S)_(.+?)%%/ )
+	    { push( @pieces, $piece ); }
+	else
+	    {
+	    my $dbtype = $1;
+	    my $field = $2;
+	    my $val =
+	        ( $dbtype eq "P"
+	        ? &cpi_db::dbget( $cpi_vars::DB, $ind, $field )
+		: $staffind
+		? &cpi_db::dbget( $cpi_vars::DB, $staffind, $field )
+		: "" );
+	    if( ! defined($val) )
+		{ print "$dbtype $field came back undefined with ind=$ind.<br>\n"; }
+	    elsif( $val =~ /\d\d\d-\d\d\d\d/ )
+	        {
+		push( @pieces, "<a href='", &phone_to_url($val), "'>$val</a>" );
+		}
+	    elsif( $field =~ /ddress/ )
+	        {
+		push( @pieces,
+		    "<a href='",&address_to_url($val),"'>",$val,"</a><br>",
+		    &cpi_qrcode_of::qrcode_of(
+		        &address_to_url( $val ),
+			    {encoding=>"image"} ) );
+		}
+	    else
+		{
+		$val =~ s/\n/<br>/gms;
+		push( @pieces, $val );
+		}
+	    }
+	}
+    my $js =
+	( $pass eq "need_javascript"
+	? &read_file( "$cpi_vars::BASEDIR/lib/notes.js" )
+	: "" );
+    $contents = &subst_list( join("",@pieces),
+	"%%JAVASCRIPT%%", $js,
+	"%%FORM_ACTION%%", $PROG_URL );
+    if( 1 )
+	{
+	my @pieces;
+	foreach my $piece ( split( m:(<input.*?>|<textarea.*?</textarea>|<select.*?>.*?</select>):ms, $contents ) )
+	    {
+	    if( $pass eq "need_javascript" )
+	        {
+		if( $piece !~ /^<input\b.*?type=note\b/
+		 || $piece !~ /^<input\b.*?name=(\w+)/ )
+		    { push( @pieces, $piece ); }
+		else
+		    {
+		    push( @pieces,
+			"<input type=hidden name='$1' id='${1}_id'>",
+			"<div id='${1}_div'></div>" );
+		    }
+		}
+	    else
+		{
+		if( $piece =~ /^<input\b.*?name=(\w+)/ )
+		    {
+		    my $varname = $1;
+		    if( $piece =~ /^<input\b.*?type=hidden/ )
+		        {}
+		    elsif( $piece !~ /^<input\b.*?type=note/ )
+		        { push( @pieces, "<b>",$cpi_vars::FORM{$varname}||"UNDEF","</b>" ); }
+		    else
+		    	{
+			foreach my $pc ( split(/~~~/,$cpi_vars::FORM{$varname}) )
+			    {
+			    if( $pc !~ /(data:image\/jpeg;base64,)(.*)/ )
+			        { push( @pieces, "<pre><b>$pc</b></pre>" ); }
+			    else
+			        {
+				my $intro = $1;
+				my $splitpc = $2;
+				$splitpc =~ s/(.{1,76})/$1\n/gs;
+				push( @pieces, "<img width=600px src='$intro$splitpc' />" );
+				}
+			    }
+			}
+		    }
+		elsif( $piece =~ /^<textarea[^>]+name=(\w+)/ )
+		    { push( @pieces, "<b>",$cpi_vars::FORM{$1}||"UNDEF","</b>" ); }
+		elsif( $piece =~ /^<select[^>]+name=(\w+)/ )
+		    { push( @pieces, "<b>",$cpi_vars::FORM{$1}||"UNDEF","</b>" ); }
+		else
+		    { push( @pieces, $piece ); }
+		}
+	    }
+	$contents = join("",@pieces);
+	@pieces = ();
+	for( my $ind=0; defined($cpi_vars::FORM{"note_$ind"}); $ind++ )
+	    {
+	    my $formv = $cpi_vars::FORM{"note_$ind"};
+	    if( $formv =~ /base64/ )
+		{ push( @pieces, "<img src='$formv'><br>\n" ); }
+	    else
+		{ push( @pieces, "<pre>$formv</pre>\n" ); }
+	    }
+	my $debug_string = join("\n",
+	    map {"<dd>$_=$cpi_vars::FORM{$_}</dd>"} keys %cpi_vars::FORM );
+	$contents = &subst_list(
+	    $contents,
+	    "%%NOTES%%", join("",@pieces),
+	    "%%DEBUG%%", $debug_string );
+	}
+    #&write_file( $outfile, $contents );
+
+    my $distributorname = &DBget($distind,"Name");
+    my $patronname = &DBget( $ind, "Name" );
+
+    my $distributorfilename = &cpi_filename::text_to_filename($distributorname);
+    my $filename;
+    my $fullfilename;
+    if( $pass eq "need_javascript" )
+        {
+	$filename = "$distributorfilename/$distind,$ind,"
+		. ( $staffind||"")
+		. "," . &cpi_hash::hashof($contents).".html";
+        $fullfilename = $FORM_DIR."/".$filename;
+	}
+    else
+        {
+	my $patronfilename = &cpi_filename::text_to_filename($patronname);
+	$filename = join("/",$distributorfilename,$patronfilename,
+	    &cpi_time::time_string("%04d-%02d-%02d.html") );
+	$fullfilename = $ASSESSMENT_DIR."/".$filename;
+	}
+    &setup_file( $fullfilename, $contents );
+    if( $dest_type eq "to_email" && $staffind )
+        {
+	my $notify = &DBget($staffind,"Notify");
+	my $emailsrc = "$distributorname router <$MAILSRC>";
+	my $msg = "<h3>Please fill out <a href='$BASES_URL/forms/$filename'>$BASES_URL/forms/$filename</a></h3>";
+	$contents =~ s:<body.*?>:<body>$msg:;
+	&cpi_send_file::sendmail( $emailsrc, $notify,
+	    "Assessment to fill out",
+	    $contents );
+	return "Form notification sent to $notify.";
+	}
+    elsif( $dest_type eq "filled_out" )
+        {
+	&cpi_translate::xprint(
+	    "<center>",
+	    "<h1>XL(Form submitted, thank you!)</h1>",
+	    "<h2>XL(Results are in: )", $fullfilename, "</center>");
+	my $emailsrc = "$distributorname router <$MAILSRC>";
+	&cpi_send_file::sendmail( $emailsrc, "dufflerpud\@yahoo.com",
+	    "$patronname form completed by ".&DBget($staffind,"Name"),
+	    &cpi_file::read_file( $fullfilename ) );
+	&cpi_file::cleanup(0);
+	}
+    else
+        {
+	print $contents;
+	return "";
+	}
+    }
+
+#########################################################################
 #	Dump the route in a useful format.				#
 #########################################################################
 sub dump_route
@@ -2950,18 +3212,18 @@ sub dump_route
     my @toprint;
     my $route_ind;
 
-    my $tind = $COMMON::FORM{ind};
+    my $tind = $cpi_vars::FORM{ind};
     my $report_name = ( $tind ? &DBget($tind,"Name") : "People" );
-    my $pretty_name = &COMMON::filename_to_text( $report_name );
-    my $filename = &COMMON::text_to_filename( $report_name );
+    my $pretty_name = &cpi_filename::filename_to_text( $report_name );
+    my $filename = &cpi_filename::text_to_filename( $report_name );
 
     print STDERR __LINE__, ": fnc=[",$fnc||"UNDEF","] tbl=[",$tbl||"UNDEF","] ind=[",$ind||"UNDEF","]\n";
     
 #    print "Content-type:  text/html\n\n",
 #	"fnc=[", ($fnc||"UNDEF"), "], tbl=[", ($tbl||"UNDEF"), "], ind=[", ($ind||"UNDEF"), "]<br>\n";
-    print STDERR "Tbl=[$COMMON::FORM{tbl}] Route=[$COMMON::FORM{ind}] filename=[$filename]<br>\n";
+    print STDERR "Tbl=[$cpi_vars::FORM{tbl}] Route=[$cpi_vars::FORM{ind}] filename=[$filename]<br>\n";
 
-    if( $COMMON::FORM{tbl} eq "Route" )
+    if( $cpi_vars::FORM{tbl} eq "Route" )
 	{
 	@indlist = &get_patron_order( $route_ind=$tind );
 	#print "get_patron_order($route_ind) returned [",join(",",@indlist),"]<br>\n";
@@ -3014,7 +3276,7 @@ sub dump_route
 	    $without_headers =~ s/.*<body.*?>//g;
 	    print $form_top, $without_headers;
 	    &footer( $tbl );
-	    &COMMON::cleanup(0);
+	    &cpi_file::cleanup(0);
 	    }
 	else
 	    {
@@ -3024,12 +3286,12 @@ sub dump_route
 		"",
 		$request{data} );
 	    }
-	&COMMON::cleanup(0);	# Will not return to create footer etc.
+	&cpi_file::cleanup(0);	# Will not return to create footer etc.
 	}
     else
 	{	# to_email:  Sending e-mail.  Print status to browser.
 	opendir(D,$DEST_HTTP) ||
-	    &fatal("Cannot opendir($DEST_HTTP):  $!");
+	    &cpi_file::fatal("Cannot opendir($DEST_HTTP):  $!");
 	unlink(
 	    map { "$DEST_HTTP/$_" }
 		grep( /^$filename\..*\.$request{type}$/,
@@ -3038,7 +3300,7 @@ sub dump_route
 	my $secure_name = join(".",$filename,&secret_id(),$request{type});
 	my $distributorind = &DBget( $tind, "Distributor" );
 	my $distributorname = ( $distributorind ? &DBget($distributorind,"Name") : "Unknown" );
-	my $distributorfilename = &COMMON::text_to_filename($distributorname);
+	my $distributorfilename = &cpi_filename::text_to_filename($distributorname);
 	my $local_dir = "$DEST_HTTP/$distributorfilename";
 
 	if( ! -d $local_dir )
@@ -3046,7 +3308,7 @@ sub dump_route
 	else
 	    {
 	    opendir(D,$local_dir) ||
-		&fatal("Cannot opendir($local_dir):  $!");
+		&cpi_file::fatal("Cannot opendir($local_dir):  $!");
 	    unlink(
 		map { "$local_dir/$_" }
 		    grep( /^$filename\..*\.$request{type}$/,
@@ -3054,9 +3316,9 @@ sub dump_route
 	    closedir( D );
 	    }
 
-	my $live_url = join("/",$URL,$distributorfilename,$secure_name);
-	my $live_qrcode = &COMMON::qrcode_of( $live_url, {encoding=>"image"} );
-	my $help_qrcode = &COMMON::qrcode_of( "$BASES_URL/help/Driver.cgi", {encoding=>"image"} );
+	my $live_url = join("/",$cpi_vars::URL,$distributorfilename,$secure_name);
+	my $live_qrcode = &cpi_qrcode_of::qrcode_of( $live_url, {encoding=>"image"} );
+	my $help_qrcode = &cpi_qrcode_of::qrcode_of( "$BASES_URL/help/Driver.cgi", {encoding=>"image"} );
 	$request{data} =~ s/%%LIVE_JAVASCRIPT%%/onLoad='setup_page();'/gms;
 	$request{data} =~ s/%%LIVE_URL%%/$live_url/gms;
 	$request{data} =~ s/%%LIVE_QRCODE%%/$live_qrcode/gms;
@@ -3074,7 +3336,7 @@ sub dump_route
 		    {
 		    if( &inlist($what,"vcf") )	# VCF attachment works great
 			{				# but HTML/javascript won't.
-			&COMMON::sendmail( $emailsrc, $notify, $request{subject},
+			&cpi_send_file::sendmail( $emailsrc, $notify, $request{subject},
 			    $request{subject}, $local_file );
 			unlink( $local_file );
 			push( @toprint, "$request{subject} XL(sent to) $notify." );
@@ -3082,9 +3344,9 @@ sub dump_route
 		    else				# We actually have to leave
 			{				# file and send him a pointer
 						    # to it.
-			&COMMON::sendmail( $emailsrc, $notify, $request{subject},
+			&cpi_send_file::sendmail( $emailsrc, $notify, $request{subject},
 			    # "$request{subject} in $live_url",
-			    &read_file($local_file),
+			    &cpi_file::read_file($local_file),
 			    $local_file );
 			push(@toprint, "$request{subject}",
 			    " XL(sent to) $notify",
@@ -3108,8 +3370,8 @@ sub dump_route
     <input type=button onClick='window.print();' value='XL(Print route sheet)'>
 </center>
 EOF
-    &COMMON::xprint( @toprint );
-    &COMMON::cleanup(0)
+    &cpi_translate::xprint( @toprint );
+    &cpi_file::cleanup(0)
     }
 
 #########################################################################
@@ -3119,18 +3381,18 @@ sub dump_patron_log
     {
     my( $fnc, $tbl, $ind ) = @_;
     #print "Content-type:  text/html\n\n";
-    &fatal("Insufficient permissions to read log file.")
+    &cpi_file::fatal("Insufficient permissions to read log file.")
 	if( ! &i_can(__LINE__,"r","Patron",$ind) );
     my $rind = &DBget($ind,"Route");
     $rind =~ s/,.*//;
     my $dind = &DBget($rind,"Distributor");
 
     my $driver_name = &DBget($ind,"Name");
-    my $fname = &COMMON::text_to_filename( $driver_name ) . ".log";
-    my $dname = &COMMON::text_to_filename( &DBget($dind,"Name") );
+    my $fname = &cpi_filename::text_to_filename( $driver_name ) . ".log";
+    my $dname = &cpi_filename::text_to_filename( &DBget($dind,"Name") );
 
     my @entries;
-    my $contents = &read_file("$PATRON_DIR/$dname/$fname");
+    my $contents = &cpi_file::read_file("$PATRON_DIR/$dname/$fname");
     if( 0 )
         {
 	print "Content-type:  text/plain\n",
@@ -3186,7 +3448,7 @@ sub dump_patron_log
 	    }
 	print "</table></center></body></html>\n";
 	}
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
@@ -3196,7 +3458,7 @@ sub dump_invoices
     {
     my( $fnc, $tbl, $ind ) = @_;
     #print "Content-type:  text/html\n\n";
-    &fatal("Insufficient permissions to read log file.")
+    &cpi_file::fatal("Insufficient permissions to read log file.")
 	if( ! &i_can(__LINE__,"r","Staff",$ind) );
     my $dind = &DBget($ind,"Distributor");
     my $rates = &DBget($dind,"Reimbursement");
@@ -3204,7 +3466,7 @@ sub dump_invoices
     my $fname = &filename_of( $ind );
     my $dname = &filename_of( $dind );
 
-    my $pdftemp = &COMMON::tempfile("pdf");
+    my $pdftemp = &cpi_file::tempfile("pdf");
     system( join(" ",
 	$DISTUSER_TO_PDF,
 	"-i",	"$TRIPS_DIR/$dname/$fname.log",
@@ -3220,10 +3482,10 @@ sub dump_invoices
 	{
 	print "Content-text:  application/pdf\n",
 	    "Content-disposition:  attachment; filename=\"$fname.pdf\"\n\n",
-	    &read_file( $pdftemp );
+	    &cpi_file::read_file( $pdftemp );
 	}
     #print "Content-type:  plain/text\n\nind=$ind dind=$dind\nRead $INVOICES_DIR/$dname/$fname\n";
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
@@ -3243,7 +3505,7 @@ sub ordered_list
     {
     my( $tbl, @inds ) = @_;
     my @unsorted;
-    my $today = &COMMON::time_string("%04d-%02d-%02d");
+    my $today = &cpi_time::time_string("%04d-%02d-%02d");
     foreach my $ind ( grep( &i_can(__LINE__,"r",$tbl,$_), @inds ) )
         {
 	push( @unsorted, $ind )
@@ -3298,7 +3560,8 @@ sub routing_select
 	    #"tbl=$tbl what=$what",
 	    "</option>" )
 	#if( $tbl ne "Patron" );
-	if( $what eq "stickers" || $what eq "vcf" );
+	if( &cpi_inlist::inlist( $what, "stickers", "vcf", "assessment" ) );
+	#if( $what eq "stickers" || $what eq "vcf" );
     if( $staffinds )
 	{
 	my %staff_todos;
@@ -3369,7 +3632,7 @@ sub show_search
     {
     my %args = @_;
     my @fields = grep($_->{Searchable}, &fields_of( $args{tbl} ));
-    $COMMON::FORM{window_start}=0 if( ! defined($COMMON::FORM{window_start}) );
+    $cpi_vars::FORM{window_start}=0 if( ! defined($cpi_vars::FORM{window_start}) );
     my @toprint;
     push( @toprint, $form_top ) if( $args{lvl} == 0 );
 
@@ -3386,14 +3649,14 @@ sub show_search
 	"</script>\n" );
 
     push( @toprint, <<EOF );
-<input type=hidden name=window_start value="$COMMON::FORM{window_start}">
+<input type=hidden name=window_start value="$cpi_vars::FORM{window_start}">
 EOF
     #print "show_search here = [",($here||"UNDEF"),"]<br>\n";
     #print "tbl=$args{tbl}<br>\n";
 
     my $counter = 0;
     my $seen = 0;
-    my $window_start = $COMMON::FORM{window_start} || 0;
+    my $window_start = $cpi_vars::FORM{window_start} || 0;
 
     my $nfields = scalar(@fields);
     $nfields++ if( $args{tbl} eq "Route" );
@@ -3401,19 +3664,19 @@ EOF
         "<table border=1 cellspacing=1 cellpadding=5 style='border-collapse:collapse;border:solid;'>\n" );
         #"<table border=1 cellspacing=0 cellpadding=0 style='border-collapse:collapse;border:solid;'>\n" );
 
-    $COMMON::FORM{window_size} = $DEFAULT_WINDOW_SEARCH_MAX
-	if( ! defined($COMMON::FORM{window_size}) );
+    $cpi_vars::FORM{window_size} = $DEFAULT_WINDOW_SEARCH_MAX
+	if( ! defined($cpi_vars::FORM{window_size}) );
     #push( @toprint, "<tr><th>", $window_start, "</th></tr>\n" );
     push( @toprint, "<tr><th style='padding:0px;border-width:0px;'>",
 	( $here !~ /\// ? ""
         : "<input type=button help='button_larr' class='no-print' onClick='submit_func(\"$here/Back\");' value='&larr;'>\n" ),
 	"</th>");
-    $COMMON::FORM{"S_Status"} ||= "Active";
+    $cpi_vars::FORM{"S_Status"} ||= "Active";
     foreach my $fp ( @fields )
 	{
 	my $fname = $fp->{Name};
 	my $fheader = "XL(" . ( $fp->{header} || $fp->{Name} ) . ")";
-	my $fv = ( $COMMON::FORM{"S_$fname"} || "" );
+	my $fv = ( $cpi_vars::FORM{"S_$fname"} || "" );
 	push( @toprint,
 	    "<th valign=top",
 	    " help='search_$args{tbl}'>",
@@ -3440,8 +3703,8 @@ EOF
 		     && $args{$field}
 		     && ! &field_contains($ind,$fp,&DBget($args{$field},"Name"),$exact_flag) );
 		$cutout = "Test 2", last
-		    if( $COMMON::FORM{"S_$field"}
-		     && ! &field_contains($ind,$fp,$COMMON::FORM{"S_$field"},$exact_flag) );
+		    if( $cpi_vars::FORM{"S_$field"}
+		     && ! &field_contains($ind,$fp,$cpi_vars::FORM{"S_$field"},$exact_flag) );
 		}
 	    #print "ind=$ind cutout=$cutout<br>\n";
 	    push( @search_results, $ind ) if( ! $cutout );
@@ -3451,7 +3714,7 @@ EOF
 
     foreach my $ind ( @search_results )
         {
-	if( $counter >= $window_start && $counter < $window_start+$COMMON::FORM{window_size} )
+	if( $counter >= $window_start && $counter < $window_start+$cpi_vars::FORM{window_size} )
 	    {
 	    my $current_status = ( &DBget($ind,"Status") || "Active" );
 	    my ( $status_vp ) = grep( $_->{name} eq $current_status,
@@ -3464,8 +3727,8 @@ EOF
 	    if( $counter && $counter == $window_start )
 		{ push( @toprint, "<input type=button help='button_uarr' class='no-print' onClick='submit_func(\"$here/SearchWindow,up\");' value='&uarr;'>\n" ); }
 	    elsif( $counter && $counter == $window_start+1 )
-		{ push( @toprint, "<input help='input_size' class='no-print' type=number min=3 max=10000 size=4 name=window_size value='$COMMON::FORM{window_size}' onChange='submit_func(\"$here/SearchWindow,size\");'>" ); }
-	    elsif( $counter == $window_start+$COMMON::FORM{window_size}-1 )
+		{ push( @toprint, "<input help='input_size' class='no-print' type=number min=3 max=10000 size=4 name=window_size value='$cpi_vars::FORM{window_size}' onChange='submit_func(\"$here/SearchWindow,size\");'>" ); }
+	    elsif( $counter == $window_start+$cpi_vars::FORM{window_size}-1 )
 		{ push( @toprint, "<input type=button help='button_darr' class='no-print' onClick='submit_func(\"$here/SearchWindow,down\");' value='&darr;'>\n" ); }
 	    push( @toprint, "</th>\n",
 		( map {(
@@ -3537,9 +3800,9 @@ EOF
     else
 	{
         push( @toprint, "</center></form>" );
-        &COMMON::xprint( @toprint );
+        &cpi_translate::xprint( @toprint );
         &footer($args{tbl});
-	&COMMON::cleanup( 0 );
+	&cpi_file::cleanup( 0 );
         }
     }
 #
@@ -3609,7 +3872,7 @@ sub interactive_handler
 	" prevtbl=",($prevtbl||"UNDEF"),
 	" ind=".($prevind||"UNDEF") );
 
-#    &COMMON::xprint( &debug_html_table(
+#    &cpi_translate::xprint( &debug_html_table(
 #	"msg", $msg,
 #	"heretext", $heretext,
 #	"fnc", $fnc,
@@ -3623,7 +3886,7 @@ sub interactive_handler
     if( $fnc eq "SearchWindow" )
 	{ $allow_reset_window = 0; }
     elsif( $allow_reset_window )
-	{ $COMMON::FORM{window_start} = 0; }
+	{ $cpi_vars::FORM{window_start} = 0; }
 
     if( $fnc eq "Back" )
 	{
@@ -3639,7 +3902,7 @@ sub interactive_handler
     elsif( $fnc eq "Include" )
 	{
 	&include_patrons_from_routes(
-	    $tbl, $ind, split(/,/,$COMMON::FORM{"add_routes"}) );
+	    $tbl, $ind, split(/,/,$cpi_vars::FORM{"add_routes"}) );
 	&interactive_handler( &DBget($ind,"Name")." XL(updated.)", @so_far );
 	}
     elsif( $fnc eq "Delete" )
@@ -3664,50 +3927,55 @@ sub interactive_handler
 	}
     elsif( $fnc eq "SearchWindow" )
 	{
-	$COMMON::FORM{window_size} = $DEFAULT_WINDOW_SEARCH_MAX
-	    if( ! defined($COMMON::FORM{window_size}) );
+	$cpi_vars::FORM{window_size} = $DEFAULT_WINDOW_SEARCH_MAX
+	    if( ! defined($cpi_vars::FORM{window_size}) );
 	if( $tbl eq "up" )
 	    {
-	    $COMMON::FORM{window_start} -= $COMMON::FORM{window_size};
-	    $COMMON::FORM{window_start} = 0 if( $COMMON::FORM{window_start} < 0 );
+	    $cpi_vars::FORM{window_start} -= $cpi_vars::FORM{window_size};
+	    $cpi_vars::FORM{window_start} = 0 if( $cpi_vars::FORM{window_start} < 0 );
 	    }
 	elsif( $tbl eq "down" )
 	    {
-	    $COMMON::FORM{window_start} += $COMMON::FORM{window_size};
-	    $COMMON::FORM{window_start} = 0
-		if( $COMMON::FORM{window_start} >= $COMMON::FORM{window_last} );
+	    $cpi_vars::FORM{window_start} += $cpi_vars::FORM{window_size};
+	    $cpi_vars::FORM{window_start} = 0
+		if( $cpi_vars::FORM{window_start} >= $cpi_vars::FORM{window_last} );
 	    }
 	elsif( $tbl eq "size" )
 	    {
 	    }
 	&interactive_handler( "", @so_far );
 	}
+    elsif( $fnc eq "anonymous_new_form" )
+        {
+	&dump_assessment();
+	}
     elsif( $fnc eq "anonymous_new_record" )
-        { &anonymous_new_record( $tbl, $COMMON::FORM{distind}, $COMMON::FORM{rectype}); }
+        { &anonymous_new_record( $tbl, $cpi_vars::FORM{distind}, $cpi_vars::FORM{rectype}); }
     elsif( $fnc eq "anonymous_add_record" )
 	{
 	&update_record( $tbl, $ind );
-	&COMMON::xprint( "</head><body>",
+	&cpi_translate::xprint( "</head><body>",
 	    "<center>",
 	    "<h1>XL($tbl record submitted.)</h1>\n",
 	    "<h2>XL(We will get back to you shortly!)</h2>\n",
 	    "</center>",
 	    "<script>\nwindow.close();\n</script>\n",
 	    "</body></html>" );
-	&COMMON::cleanup( 0 );
+	&cpi_file::cleanup( 0 );
         }
-    elsif( $fnc =~ /(stickers|vcf|html)_(with_custom_header|with_normal_header|to_email)/ )
+    elsif( $fnc =~ /(assessment|stickers|vcf|html)_(with_custom_header|with_normal_header|to_email)/ )
     #elsif( &inlist( $fnc, "stickers_with_custom_header", "vcf_with_custom_header", "vcf_to_email", "html_with_custom_header", "html_to_email" ) )
 	{
-	print STDERR "Calling dump_route(",$fnc||"UNDEF",",",$tbl||"UNDEF",",",$ind||"UNDEF",")\n";
-	$msg = &dump_route($fnc,$tbl,$ind);
+	print STDERR "Calling dump_*(",$fnc||"UNDEF",",",$tbl||"UNDEF",",",$ind||"UNDEF",")\n";
+	$msg =
+	    ( $1 eq "assessment"
+	    ? &dump_assessment($fnc,$prevtbl,$prevind)
+	    : &dump_route($fnc,$tbl,$ind) );
 	print STDERR "Calling interactive_handler( ",$msg||"UNDEF", join(",",@so_far), " )\n";
 	&interactive_handler( $msg, @so_far );
-	print STDERR "Calling dump_route...)\n";
-	#&interactive_handler( &dump_route($fnc,$tbl,$ind), @so_far );
 	}
     elsif( $fnc eq "map_with_custom_header" )
-	{ &dump_map( $COMMON::FORM{arg} ); }
+	{ &dump_map( $cpi_vars::FORM{arg} ); }
     elsif( $fnc =~ /(\w*)_route_order/ )
         { &modify_route_order($1); }
     elsif( $fnc eq "list_route_runs" )
@@ -3858,7 +4126,7 @@ sub apply_edit_string
 	    }
 	}
 
-    my $route_status_debug = $COMMON::FORM{route_status_debug};
+    my $route_status_debug = $cpi_vars::FORM{route_status_debug};
     if( $route_status_debug && ($route_status_debug ne $modified_string) )
 	{
 	print STDERR	"Applying    <$instructions>\n",
@@ -3878,12 +4146,12 @@ sub apply_edit_string
 sub parse_trip_form
     {
     my $jsonfile = sprintf("%s/%s.json",
-    	$PROGRESS_DIR,$COMMON::FORM{status_file});
-    my $old_route_status_string = &read_file( $jsonfile, "" );
+    	$PROGRESS_DIR,$cpi_vars::FORM{status_file});
+    my $old_route_status_string = &cpi_file::read_file( $jsonfile, "" );
     my $new_route_status_string =
         &apply_edit_string(
 	    $old_route_status_string,
-	    $COMMON::FORM{route_status_edit});
+	    $cpi_vars::FORM{route_status_edit});
 
     my $route_status;
     eval { $route_status = &decode_json($new_route_status_string); };
@@ -3892,14 +4160,14 @@ sub parse_trip_form
 	{	# Apparently above didn't create legal JSON.  Don't update
 		# the old file, but leave result around for debugging.
 	print STDERR "decode_json() failed, update in $jsonfile.bogus.\n";
-	&write_file( "$jsonfile.bogus", $new_route_status_string );
+	&cpi_file::write_file( "$jsonfile.bogus", $new_route_status_string );
 	return undef;
 	}
 
     &setup_file( $jsonfile, $new_route_status_string );
 
     $mail_header{from}	=
-	"$PROJLONG $route_status->{ROUTE_NAME} <$PROJECT\@$DOMAIN>";
+	"$PROJLONG $route_status->{ROUTE_NAME} <$PROJECT\@$cpi_vars::DOMAIN>";
     $mail_header{subject} =
 	"$PROJLONG $route_status->{ROUTE_NAME} route update";
 
@@ -3915,7 +4183,7 @@ sub parse_trip_form
 	done		=>	$route_status->{done},
 	update_time	=>	$route_status->{update_time},
 	progress_string	=>	$route_status->{progress},
-	serial		=>	$COMMON::FORM{route_status_serial}
+	serial		=>	$cpi_vars::FORM{route_status_serial}
 	);
 
     return \%ret;
@@ -3971,13 +4239,13 @@ sub parse_trip_input
 	}
     $input_p->{distributor_name} = &DBget( $input_p->{distributor}, "Name" );
     $input_p->{distributor_filename} =
-	&COMMON::text_to_filename( $input_p->{distributor_name} );
+	&cpi_filename::text_to_filename( $input_p->{distributor_name} );
     $input_p->{driver_name} = &DBget( $input_p->{driver_ind}, "Name" );
     $input_p->{driver_filename} =
-	&COMMON::text_to_filename( $input_p->{driver_name} );
-    $input_p->{route_filename} = &COMMON::text_to_filename( $input_p->{route_name} );
+	&cpi_filename::text_to_filename( $input_p->{driver_name} );
+    $input_p->{route_filename} = &cpi_filename::text_to_filename( $input_p->{route_name} );
 
-    $input_p->{date}=&COMMON::time_string($STANDARD_DATE_FMT,$now);
+    $input_p->{date}=&cpi_time::time_string($STANDARD_DATE_FMT,$now);
     $input_p->{wday}=$DAY_NAMES[(localtime($now))[6]];
 
     return $input_p;
@@ -4004,11 +4272,11 @@ sub generate_html
 	<th align=right>Donation<br>(type)</th></tr>
 EOF
 
-    my @addressparts = ( "http://maps.google.com/maps/dir" );
+    #my @addressparts = ( "http://maps.google.com/maps/dir" );
     foreach my $display_order_ind ( 0 .. $#{$display_order} )
 	{
 	my $stop_p = $stops->[$display_order->[$display_order_ind]];
-	push( @addressparts, $stop_p->{address} );
+	#push( @addressparts, $stop_p->{address} );
 	push( @ret,
 	    "    <tr style=", $STATUS_STYLES{$stop_p->{status}}, ">",
 	    "<th style='border-top:1px solid blue' align=left>",
@@ -4086,7 +4354,7 @@ sub get_route_ranges
 	    (
 	    [ $distributor_ind ],
 	    [ &stops_to_patrons(
-		&reorder($distributor_ind, @patrons_to_route, $distributor_ind)
+		&optimize_order($distributor_ind, @patrons_to_route, $distributor_ind)
 		) ],
 	    [ $distributor_ind ]
 	    );
@@ -4108,7 +4376,7 @@ sub get_route_ranges
 	my $starts_at = $patron_ranges[0][$#{$patron_ranges[0]}];
 	my $ends_at = $patron_ranges[2][0];
 	my @to_optimize = grep( ! $ordered_so_far{$_}, @patrons_to_route );
-	my @optimized = &reorder(
+	my @optimized = &optimize_order(
 	    $starts_at, 
 	    @to_optimize,
 	    $ends_at );
@@ -4143,14 +4411,14 @@ sub modify_route_order
 	if( $fnc eq "update" )
 	    {
 	    &DBwrite();
-	    &DBput($route_ind,"Order",$order_string=$COMMON::FORM{route_order});
+	    &DBput($route_ind,"Order",$order_string=$cpi_vars::FORM{route_order});
 	    &DBpop();
 	    }
 	@patron_ranges = &get_route_ranges( $order_string, $route_ind );
 	my %patron_texts
 	    = map { ($_, "<th align=left>".&DBget($_,"Name")."</th><td>".&DBget($_,"Address")."</td>") }
 	    	@patrons_to_route;
-	&COMMON::xprint(
+	&cpi_translate::xprint(
 	    $form_top,
 	    "<center>Specified order of the $route_name route:</center>",
 	    "<center id=route_order_list_id></center>",
@@ -4167,7 +4435,7 @@ sub modify_route_order
 	    "</script>\n" );
 	}
     &footer("Route");
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
@@ -4198,7 +4466,7 @@ sub indent
 ##########################################################################
 #sub global_time
 #    {
-#    return &COMMON::time_string( $GLOBAL_TIME_FMT ,$now);
+#    return &cpi_time::time_string( $GLOBAL_TIME_FMT ,$now);
 #    }
 
 #########################################################################
@@ -4221,7 +4489,7 @@ sub update_databases
 	&setup_file( ">>" .
 	    join("/",
 	        $PATRON_DIR, $input_p->{distributor_filename},
-		&COMMON::text_to_filename($stop_p->{name}).".log" ) );
+		&cpi_filename::text_to_filename($stop_p->{name}).".log" ) );
 	    
 	print OUT
 	    "Seen ",$input_p->{date}||"?",
@@ -4310,7 +4578,7 @@ sub setup_file
     #return undef if( ! -d $dirname && ! system("mkdir -p '$dirname'") );
     system("mkdir -p '$dirname'") if( ! -d $dirname );
     open( OUT, "$openfnc $fn" ) 
-        || &fatal("Cannot $openfnc to ${fn}:  $!");
+        || &cpi_file::fatal("Cannot $openfnc to ${fn}:  $!");
     binmode OUT;		# Avoid "Wide character in print" error messages
     if( @contents )
         {
@@ -4367,7 +4635,7 @@ sub update_progress
     {
     my( $input_p ) = @_;
 
-    my $progbase = join('/',$PROGRESS_DIR,$COMMON::FORM{status_file});
+    my $progbase = join('/',$PROGRESS_DIR,$cpi_vars::FORM{status_file});
     my $progfile = "$progbase.progress";
     if( $input_p->{progress_string} =~ /^([^\+\-:]*)(.*)$/ )
         {
@@ -4388,7 +4656,7 @@ sub old_update_progress
     my( $input_p ) = @_;
     my $title = &progress_title($input_p);
 
-    my $progbase = join('/',$PROGRESS_DIR,$COMMON::FORM{status_file});
+    my $progbase = join('/',$PROGRESS_DIR,$cpi_vars::FORM{status_file});
     $input_p->{progress_p}
 	||= &decode_progress( $input_p->{progress_string}||"" );
     undef( $input_p->{progress_string} ) if( $input_p->{progress_p} );
@@ -4469,11 +4737,11 @@ sub old_update_progress
 #########################################################################
 sub stop_updates_if_needed
     {
-    if( my $reason = &read_file($EXIT_FILE,"") )
+    if( my $reason = &cpi_file::read_file($EXIT_FILE,"") )
 	{
 	$reason =~ s/\n/\\n/g;
 	print "<script>\nalert('$reason');\nparent.window.close();\n</script>\n";
-	&COMMON::cleanup( 0 );
+	&cpi_file::cleanup( 0 );
 	}
     }
 
@@ -4490,7 +4758,7 @@ sub trip_update
 
     my( $input_p ) = &parse_trip_input();
 
-    my $timestr = &COMMON::time_string("%04d-%02d-%02d %02d:%02d",$now);
+    my $timestr = &cpi_time::time_string("%04d-%02d-%02d %02d:%02d",$now);
     my $progress_received;
     my( $done ) = $input_p->{done};
     if( $done )
@@ -4499,7 +4767,7 @@ sub trip_update
 	&update_trips( $input_p, $html_table );
 	&update_databases( $input_p );
 
-	&COMMON::sendmail(
+	&cpi_send_file::sendmail(
 	    $mail_header{from},
 	    $mail_header{to},
 	    $mail_header{subject},
@@ -4515,10 +4783,10 @@ sub trip_update
     #my $last_recorded = ( $input_p->{progress_p}->[-1]{when} || 0 );
     my $last_recorded = $input_p->{update_time};
     print "<script>\n",
-	"parent.progress_logged($done,'$timestr',$COMMON::FORM{route_status_serial},$last_recorded);\n",
+	"parent.progress_logged($done,'$timestr',$cpi_vars::FORM{route_status_serial},$last_recorded);\n",
 	"</script>\n";
     print STDERR
-	"parent.progress_logged($done,'$timestr',$COMMON::FORM{route_status_serial},$last_recorded);\n";
+	"parent.progress_logged($done,'$timestr',$cpi_vars::FORM{route_status_serial},$last_recorded);\n";
 
     if( ! $LOCAL_INPUT )
 	{
@@ -4526,20 +4794,20 @@ sub trip_update
 	close( STDERR );
 	}
 
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
 #	Return a pointer to a structure from a JSON file.		#
-#	Is basically	decode_json( &read_file( $_[0] ) );		#
+#	Is basically	decode_json( &cpi_file::read_file( $_[0] ) );		#
 #########################################################################
 sub eval_json
     {
     my $ret;
     my( $fn ) = @_;
-    my $file_contents = &read_file( $fn );
+    my $file_contents = &cpi_file::read_file( $fn );
     eval { $ret = decode_json( $file_contents ); };
-    &fatal("Cannot evaluate json contents of ${fn}.") if( ! $ret );
+    &cpi_file::fatal("Cannot evaluate json contents of ${fn}.") if( ! $ret );
     return $ret;
     }
 
@@ -4550,10 +4818,10 @@ sub eval_json
 sub eval_po
     {
     my( $fn ) = @_;
-    my $file_contents = &read_file( $fn );
+    my $file_contents = &cpi_file::read_file( $fn );
     my $VAR1;
     eval( $file_contents );
-    &fatal( "Cannot evaluate perl contents of ${fn}.") if( ! $VAR1 );
+    &cpi_file::fatal( "Cannot evaluate perl contents of ${fn}.") if( ! $VAR1 );
     return $VAR1;
     }
 
@@ -4593,7 +4861,7 @@ sub pomap
     elsif( $output =~ /^(.*)\.(.*?)$/ && $mappers{$2} )
 	{ $output_type=$2; $output_file=$output; }
     else
-	{ &fatal("[$output] is not in the correct format."); }
+	{ &cpi_file::fatal("[$output] is not in the correct format."); }
 
     print STDERR "output=[$output] output_type=[$output_type]\n";
 
@@ -4612,7 +4880,7 @@ sub pomap
 	    print STDERR "Setting title to [$input_p->{title}]\n";
 	    my $progress_file = "$1.progress";
 	    if( -r $progress_file )
-	        { $input_p->{progress_p} = &decode_progress( &read_file( $progress_file ) ); }
+	        { $input_p->{progress_p} = &decode_progress( &cpi_file::read_file( $progress_file ) ); }
 	    elsif( !$input_p->{progress_p} && $input_p->{progress_string} )
 	        { $input_p->{progress_p} = &decode_progress( $input_p->{progress_string} ); }
 	    }
@@ -4639,7 +4907,7 @@ sub pomap
 		}
 	    else
 		{
-		&fatal("Do not know how to translate '$input_thing'.");
+		&cpi_file::fatal("Do not know how to translate '$input_thing'.");
 		}
 	    }
 	$input_p->{color} = $color_index++;
@@ -4653,7 +4921,7 @@ sub pomap
     my $res = &{$mappers{$output_type}{progress}}($title,@input_ps);
     &DBpop();
 
-    &write_file( $output_file, $res ) if( $output_file );
+    &cpi_file::write_file( $output_file, $res ) if( $output_file );
     return $res;
     }
 
@@ -4674,7 +4942,7 @@ sub non_CGI_handler
     else
 	{ push(@problems,"Unknown argument '$ARGV[0]' specified."); }
 
-    &fatal("XL(Usage):  $COMMON::PROG.cgi (dump|dumpaccounts|dumptranslations|undump|undumpaccounts|undumptranslations) [ dumpname ]",0)
+    &cpi_translate::xlfatal("XL(Usage):  $cpi_vars::PROG.cgi (dump|dumpaccounts|dumptranslations|undump|undumpaccounts|undumptranslations) [ dumpname ]",0)
    	 if( @problems );
     }
 
@@ -4683,21 +4951,21 @@ sub non_CGI_handler
 #########################################################################
 sub routing_page_top
     {
-    my $jsfile = &read_file($ROUTINGJS);
+    my $jsfile = &cpi_file::read_file($ROUTINGJS);
     $jsfile =~ s+\$FORMNAME+$FORMNAME+g;
 
     return <<EOF;
 <script>
 $jsfile
 </script>
-</head><body $COMMON::BODY_TAGS>
-$COMMON::HELP_IFRAME
+</head><body $cpi_vars::BODY_TAGS>
+$cpi_vars::HELP_IFRAME
 <div id=body_id>
 <form name=$FORMNAME method=post ENCTYPE="multipart/form-data">
 <input type=hidden name=func>
 <input type=hidden name=arg>
-<input type=hidden name=SID value="$COMMON::SID">
-<input type=hidden name=USER value="$COMMON::USER">
+<input type=hidden name=SID value="$cpi_vars::SID">
+<input type=hidden name=USER value="$cpi_vars::USER">
 <center>
 EOF
     }
@@ -4715,20 +4983,20 @@ sub read_maps
 	}
 
     open( INF, "find $PROGRESS_DIR -name '*.po' -print |" ) ||
-	&fatal("Cannot find $PROGRESS_DIR:  $!");
+	&cpi_file::fatal("Cannot find $PROGRESS_DIR:  $!");
     my( $route_ind, $driver_ind, $distributor_ind );
 
-    my $s4date		= ( $COMMON::FORM{date}		|| "" );
-    my $s4route		= ( $COMMON::FORM{Route}	|| "" );
-    my $s4distributor	= ( $COMMON::FORM{Distributor}	|| "" );
-    my $s4driver	= ( $COMMON::FORM{Staff}	|| "" );
+    my $s4date		= ( $cpi_vars::FORM{date}		|| "" );
+    my $s4route		= ( $cpi_vars::FORM{Route}	|| "" );
+    my $s4distributor	= ( $cpi_vars::FORM{Distributor}	|| "" );
+    my $s4driver	= ( $cpi_vars::FORM{Staff}	|| "" );
 
     while( $_ = <INF> )
 	{
 	chomp( $_ );
 	my $fn = $_;
 	$fn =~ s+^$PROGRESS_DIR/++;
-	if( $fn =~ m:([\w_]+)/(\d\d\d\d-\d\d-\d\d)-([\w_]+)-([\w_]+)-([\w_]+)\.(\w+)$: )
+	if( $fn =~ m:(\w+)/(\d\d\d\d-\d\d-\d\d)-(\w+)-(\w+)-(\w+)\.(\w+)$: )
 	    {
 	    my ( $distributor_file, $date, $route_file, $driver_file, $secret, $ext )
 		= ( $1, $2, $3, $4, $5, $6 );
@@ -4784,8 +5052,8 @@ sub list_route_runs
     {
     my ( $tbl, $ind, $date ) = @_;
     #print STDERR "CMC list_route_runs($tbl,$ind,$date)<br>\n";
-    $COMMON::FORM{$tbl} = $ind if( $tbl && $ind );
-    $COMMON::FORM{date} = $date;
+    $cpi_vars::FORM{$tbl} = $ind if( $tbl && $ind );
+    $cpi_vars::FORM{date} = $date;
     &read_maps();
 
     my @extlist = &router_list();
@@ -4849,7 +5117,7 @@ sub list_route_runs
 	    }
 	}
     push( @s, "</tr></table></center></form>\n" );
-    &COMMON::xprint( @s );
+    &cpi_translate::xprint( @s );
     &footer( $tbl );
     }
 
@@ -4880,7 +5148,7 @@ sub dump_map
     else
     	{
 	$ext = $arg;
-	@list_of_maps = split(/,/,$COMMON::FORM{maps});
+	@list_of_maps = split(/,/,$cpi_vars::FORM{maps});
 	}
 
     # By the time we are here, $ext contains what we're going to output
@@ -4893,7 +5161,7 @@ sub dump_map
 	if( &rec_type($input_piece,"Route") )
 	    {
 	    my $route_ind = $input_piece;	# Let's use a better name
-	    if( $COMMON::ANONYMOUS || &i_can(__LINE__,"r","Route",$route_ind) )
+	    if( $cpi_vars::ANONYMOUS || &i_can(__LINE__,"r","Route",$route_ind) )
 		{
 		push( @input_routes, $route_ind );
 		$route_files{&filename_of($route_ind)} = 1;
@@ -4916,7 +5184,7 @@ sub dump_map
 		}
 	    #print "dump_map($distributor_ind,$driver_ind,$route_ind,$date)<br>\n";
 	    my $can_do;
-	    $can_do ||= $COMMON::ANONYMOUS;	# CMC clearly THIS is wrong
+	    $can_do ||= $cpi_vars::ANONYMOUS;	# CMC clearly THIS is wrong
 	    $can_do ||=
 		(   &i_can(__LINE__,"r","Distributor",$distributor_ind)
 		 && &i_can(__LINE__,"r","Staff",$driver_ind)
@@ -4956,7 +5224,7 @@ sub dump_map
 	join( "-", @filename_pieces ),
 	".", $mappers{$ext}{destext}, "\"\n"
 	if( ! $mappers{$ext}{tobrowser} );
-    #print "\n", ( $ext eq "json" ? &read_file($fn) : &pomap( @input_po_files, $ext ) );
+    #print "\n", ( $ext eq "json" ? &cpi_file::read_file($fn) : &pomap( @input_po_files, $ext ) );
 
     # If we are here, @input_po_files contains list of .pos that contain route runs
     # that we want to map, and @input_routes contains list of routes that we want
@@ -4977,7 +5245,7 @@ sub watch_a_route
 	$driver,
 	"$date_driven-$route.po");
     &pomap( $fn, $DEFAULT_ROUTER );
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
@@ -5152,7 +5420,7 @@ sub sanity
 	    "</th></tr>\n" );
 	}
     push( @s, "</table></center>" );
-    &COMMON::xprint( @s );
+    &cpi_translate::xprint( @s );
     return $ret;
     }
 
@@ -5168,10 +5436,10 @@ sub read_costs
     if( ! -f $fname )
         { %costs = (); }
     elsif( $fname =~ /\.po$/ )
-        { eval( &read_file( $fname ) ); }
+        { eval( &cpi_file::read_file( $fname ) ); }
     else
         {
-	open( INF, $fname ) || &fatal("Cannot read ${fname}:  $!");
+	open( INF, $fname ) || &cpi_file::fatal("Cannot read ${fname}:  $!");
 	my $line = <INF>;
 	chomp( $line );
 	my( $noise, @coords_x ) = split(/\s+/,$line);
@@ -5194,7 +5462,7 @@ sub write_costs
     my( $fname, @coords ) = @_;
     if( $fname =~ /\.po$/ )
         {
-	&write_file( $fname, Data::Dumper->Dump( [\%costs], [ '*costs' ] ) );
+	&cpi_file::write_file( $fname, Data::Dumper->Dump( [\%costs], [ '*costs' ] ) );
 	}
     else
 	{
@@ -5209,7 +5477,7 @@ sub write_costs
 	    grep( $seen_coord{$_}=1, @hashinds );
 	    @coords = keys %seen_coord;
 	    }
-	open( OUT, ">$fname" ) || &fatal("Cannot write ${fname}:  $!");
+	open( OUT, ">$fname" ) || &cpi_file::fatal("Cannot write ${fname}:  $!");
 	print OUT join(" ","-",@coords),"\n";
 	foreach my $c ( @coords )
 	    {
@@ -5296,7 +5564,7 @@ sub print_table
     my @fields;
     while( $data[0] && $data[0] !~ /^\w_/ )
         { push( @fields, shift(@data) ); }
-    open( OUT, "> $filename" ) || &fatal("Cannot write ${filename}:  $!");
+    open( OUT, "> $filename" ) || &cpi_file::fatal("Cannot write ${filename}:  $!");
     print OUT join("\t","Id",@fields),"\n";
     foreach my $checkind ( @data )
 	{
@@ -5353,7 +5621,7 @@ sub rebalance_routes
 	push( @s, "<tr><th align=left>Patrons:</th>",
 	    "<td align=right>", scalar(@patrons), "</td></tr>\n" );
 	push( @s, "</table>\n" );
-	&COMMON::xprint( @s );
+	&cpi_translate::xprint( @s );
 	}
     &footer( $tbl );
     }
@@ -5391,7 +5659,7 @@ sub setup_eximport
 	);
     my $eipp = \%eximport;
 
-    eval( &read_file( "$eipp->{dir}/eximport.pl" ) )
+    eval( &cpi_file::read_file( "$eipp->{dir}/eximport.pl" ) )
 	if( -r "$eipp->{dir}/eximport.pl" );
 
     if( ! $eipp->{field_list} )
@@ -5411,7 +5679,7 @@ sub setup_eximport
 	    @{$TABLE_FIELDS{$tbl}{fields}} );
 	}
 
-    #&write_file( $eipp->{dir}."/eximport.dump", Dumper( $eipp ) );
+    #&cpi_file::write_file( $eipp->{dir}."/eximport.dump", Dumper( $eipp ) );
 
     return $eipp;
     }
@@ -5437,10 +5705,10 @@ sub import_distributor
     $tbl = "Patron";
     my $eipp = &setup_eximport( $distind, $tbl );
 
-    my $contents = $COMMON::FORM{file_contents};
+    my $contents = $cpi_vars::FORM{file_contents};
 
     # We do this in memory, but it's nice to have a copy
-    &write_file( $eipp->{dir}."/import", $contents );
+    &cpi_file::write_file( $eipp->{dir}."/import", $contents );
 
     $contents =~ s/\r//gms;
     my( @records ) =
@@ -5526,7 +5794,7 @@ sub export_with_custom_header
 		    push( @new_vals, $display_val );
 		    }
 		else
-		    { &fatal("No $local_field_name in $tbl."); }
+		    { &cpi_file::fatal("No $local_field_name in $tbl."); }
 		}
 	    push( @records, join( $eipp->{field_separator}, @new_vals ) );
 	    }
@@ -5536,7 +5804,7 @@ sub export_with_custom_header
 	"Content-type:  text/plain\n",
 	"Content-disposition:  attachment; filename=\"$tbl.csv\"\n\n",
 	$res;
-    &COMMON::cleanup(0);
+    &cpi_file::cleanup(0);
     }
 
 #########################################################################
@@ -5545,26 +5813,27 @@ sub export_with_custom_header
 sub CGI_handler
     {
     &authenticate()
-	if( $COMMON::USER eq "anonymous" 
-	 && $COMMON::FORM{func} ne "map_with_custom_header" );
-    #&COMMON::show_vars()
-        #if( ! &inlist(($COMMON::FORM{func}||""),"download","view") );
+	if( $cpi_vars::USER eq "anonymous" 
+	 && $cpi_vars::FORM{func} ne "map_with_custom_header"
+	 && $cpi_vars::FORM{func} ne "anonymous_new_form" );
+    #&cpi_cgi::show_vars()
+        #if( ! &inlist(($cpi_vars::FORM{func}||""),"download","view") );
 
-    #print "Content-type:  text/html\n\nFORM=$COMMON::FORM{USER} USER=$COMMON::USER.<br>";
-    $COMMON::USER ||= "anonymous";
+    #print "Content-type:  text/html\n\nFORM=$cpi_vars::FORM{USER} USER=$cpi_vars::USER.<br>";
+    $cpi_vars::USER ||= "anonymous";
     $form_top = &routing_page_top();
 
-    if( $COMMON::FORM{watch} )
-	{ &watch_a_route( $COMMON::FORM{watch} ); }
-    elsif( $COMMON::FORM{route_status_edit} )
+    if( $cpi_vars::FORM{watch} )
+	{ &watch_a_route( $cpi_vars::FORM{watch} ); }
+    elsif( $cpi_vars::FORM{route_status_edit} )
 	{ &trip_update(); }
-    elsif( $COMMON::FORM{func} eq "admin" )
-	{ &COMMON::admin_page(); }
-    elsif( $COMMON::FORM{func} eq "dologin" )
+    elsif( $cpi_vars::FORM{func} eq "admin" )
+	{ &cpi_user::admin_page(); }
+    elsif( $cpi_vars::FORM{func} eq "dologin" )
 	{ &interactive_handler( undef, () ); }
     else
 	{
-	&interactive_handler( undef, split(/\//,($COMMON::FORM{func}||"") ) );
+	&interactive_handler( undef, split(/\//,($cpi_vars::FORM{func}||"") ) );
 	}
     }
 
@@ -5576,7 +5845,7 @@ $Data::Dumper::Sortkeys = 1;
 if( ! defined($ENV{SCRIPT_NAME}) || $ENV{SCRIPT_NAME} eq "" )
     { &non_CGI_handler(); }
 elsif( $ENV{SCRIPT_NAME}!~/.*-test/ && -r $DISABLED )
-    { print &read_file( $DISABLED ); }
+    { print &cpi_file::read_file( $DISABLED ); }
 else
     { &CGI_handler(); }
-&COMMON::cleanup(0);
+&cpi_file::cleanup(0);

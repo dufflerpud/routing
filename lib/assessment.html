@@ -1,0 +1,196 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Access and Photo Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        #notes_video_id {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border: 1px solid #ddd;
+        }
+        #photo {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+        }
+        #captureButton {
+            font-size: 18px;
+            padding: 10px 20px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+    </style>
+%%JAVASCRIPT%%
+</head>
+<body onLoad='setup_notes("assessor_note");'>
+<center>
+<h3 align=center>Home Delivered Meals Visual Check in Form:</h3>
+
+<form method=post name=form action='%%FORM_ACTION%%'>
+<input type=hidden name=func value='anonymous_new_form'>
+<video id="notes_video_id" autoplay playsinline style='display:none'></video>
+<canvas id="notes_canvas_id" style="display:none;"></canvas>
+<button id="notes_snap_id" onClick='snap_photo();return false;' style="display:none;">Snap!</button>
+<button id="notes_cancel_id" onClick='cancel_photo();return false;' style="display:none;">Cancel</button>
+<table id=master_table_id>
+<tr><th valign=top align=left>Form completed:</th><td>
+    <input type="datetime-local" name=Competed placeholder='yyyy-mm-dd hh:mm' size=16 required>
+</td></tr>
+<tr><th valign=top align=left>&nbsp;&nbsp;by (Assessor name):</th><td>
+    <input type=text name=Assessor value="%%S_Name%%" required>
+</td></tr>
+<tr><td valign=top colspan=2><hr></td></tr>
+<tr><th valign=top align=left>Client Name:</th><td>
+    %%P_Name%%
+</td></tr>
+<tr><th valign=top align=left>Phone Number:</th><td>
+    %%P_Phone%%
+</td></tr>
+<tr><th valign=top align=left>Address:</th><td>
+    %%P_Address%%
+</td></tr>
+<tr><td valign=top colspan=2 align=left>
+    %%P_Assessor_note%%
+</th></tr>
+
+<tr><td valign=top>
+    Are you currently struggling to prepare meals and have minimal support
+    with meal preparation?
+    </td><td><select name=meal_prep size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Sometimes>Sometimes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Do you have a hard time leaving your house due to physical limitations?
+    </td><td><select name=leaving_home size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Sometimes>Sometimes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Do you feel lonely or lack companionship?
+    </td><td><select name=lonely size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Sometimes>Sometimes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Do you find difficulty with house chores, such as cleaning,
+    laundry, grocery shopping or help with bathing and dressing
+    and are going without support?
+    </td><td><select name=chores size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Sometimes>Sometimes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Do you have any safety concerns in your home?  Is it hard for
+    you to access your kitchen, bathroom, etc.?
+    </td><td><select name=safety size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Sometimes>Sometimes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Do you have access to community services such as:
+    Transportation resources, help with heating your home,
+    buying food, paying bills, or medical expenses?
+    </td><td><select name=community_services size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Sometimes>Sometimes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+<tr><td valign=top colspan=2><hr></td></tr>
+<tr><td valign=top>
+    Does it appear the client has mobility issues?  (i.e. are they
+    unstable on their feet, require an assistive device, wheelchair
+    bound, etc.)
+    </td><td><select name=mobility size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Unobservable>Unable to observe</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Does the client's property and home appear to be safe?  (i.e.
+    stairs to home are operable, there are no apparent concerns
+    for safety within and outsides of the home)
+    </td><td><select name=property_safe size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Unobservable>Unable to observe</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><td valign=top>
+    Does the client appear to be homebound?  (i.e. there is no
+    use of a vehicles, the client is only able to get out for
+    essential means such as medical appointment, and religious
+    practices)
+    </td><td><select name=homebound size=4 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=Unobservable>Unable to observe</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><th valign=top colspan=2 align=left>
+    Notes:<br>
+    <input type=note name=assessor_note>
+</th></tr>
+<tr><th valign=top colspan=2><hr>Staff use only below this line:</th></tr>
+
+<tr><td valign=top>
+    According to this VCI, the client appears to be eligible for home delivered
+    meals:
+    </td><td><select name=eligible size=3 required>
+        <option disabled>Select one:</option>
+        <option value=Yes>Yes</option>
+        <option value=No>No</option>
+    </select>
+</td></tr>
+
+<tr><th valign=top align=left>Staff name:</th><td>
+    <input type=text name=staff required>
+</td></tr>
+<tr><th valign=top align=left>Staff Signature:</th><td>
+    <input type=text name=signature required>
+</td></tr>
+<tr><th valign=top align=left>Date uploaded into WellSky:</th><td>
+    <input type=date name=upload required>
+</td></tr>
+<tr><th><input type=submit value=Submit onClick='do_submit();'><th></tr>
+</table></form></center>
+</body>
+</html>
