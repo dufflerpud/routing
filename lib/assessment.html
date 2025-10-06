@@ -9,6 +9,46 @@
             text-align: center;
             padding: 20px;
         }
+	@media print {
+	    body	{
+			color: black;
+			background-color: white;
+	    }
+	    tbody	{
+			color: #204080;
+			background-color: white;
+			}
+	    input	{
+			outline:	none;
+			border:		none;
+			}
+	    input::placeholder	{ opacity: 0.0; }
+	    textarea	{
+			outline:	none;
+			border:		none;
+			}
+	    select	{
+			outline:	none;
+			border:		none;
+			-moz-appearance:	none;
+			}
+	    textarea::placeholder	{ opacity: 0.0; }
+	    .no-print, .no-print * { display: none !important; }
+	    a, a:visited { color: #000 !important; text-decoration:none; }
+	    }
+
+	@media not print {
+	    body	{
+			background-color: #6090b0;
+			color: white;
+			}
+	    tbody	{
+			background-color: #C0E0FF;
+			color: #204080;
+			}
+	    .only-print, .only-print * { display: none !important; }
+	    }
+
         #notes_video_id {
             width: 100%;
             max-width: 640px;
@@ -34,6 +74,10 @@
 <body onLoad='setup_notes("assessor_note");'>
 <center>
 <h3 align=center>Home Delivered Meals Visual Check in Form:</h3>
+<center>
+%%LIVE_URL%%
+%%LIVE_QRCODE%%
+</center>
 
 <form method=post name=form action='%%FORM_ACTION%%'>
 <input type=hidden name=func value='anonymous_new_form'>
@@ -41,28 +85,28 @@
 <canvas id="notes_canvas_id" style="display:none;"></canvas>
 <button id="notes_snap_id" onClick='snap_photo();return false;' style="display:none;">Snap!</button>
 <button id="notes_cancel_id" onClick='cancel_photo();return false;' style="display:none;">Cancel</button>
-<table id=master_table_id>
-<tr><th valign=top align=left>Form completed:</th><td>
+<table id=master_table_id border=0>
+<tr style='border-bottom:1px;'><th valign=top align=left>Form completed:</th><td>
     <input type="datetime-local" name=Competed placeholder='yyyy-mm-dd hh:mm' size=16 required>
 </td></tr>
-<tr><th valign=top align=left>&nbsp;&nbsp;by (Assessor name):</th><td>
+<tr style='border-bottom:1px;'><th valign=top align=left>&nbsp;&nbsp;by (Assessor name):</th><td>
     <input type=text name=Assessor value="%%S_Name%%" required>
 </td></tr>
-<tr><td valign=top colspan=2><hr></td></tr>
-<tr><th valign=top align=left>Client Name:</th><td>
+<tr style='border-bottom:1px;'><td valign=top colspan=2><hr></td></tr>
+<tr style='border-bottom:1px;'><th valign=top align=left>Client Name:</th><td>
     %%P_Name%%
 </td></tr>
-<tr><th valign=top align=left>Phone Number:</th><td>
+<tr style='border-bottom:1px;'><th valign=top align=left>Phone Number:</th><td>
     %%P_Phone%%
 </td></tr>
-<tr><th valign=top align=left>Address:</th><td>
+<tr style='border-bottom:1px;'><th valign=top align=left>Address:</th><td>
     %%P_Address%%
 </td></tr>
-<tr><td valign=top colspan=2 align=left>
+<tr style='border-bottom:1px;'><td valign=top colspan=2 align=left>
     %%P_Assessor_note%%
 </th></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Are you currently struggling to prepare meals and have minimal support
     with meal preparation?
     </td><td><select name=meal_prep size=4 required>
@@ -73,7 +117,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Do you have a hard time leaving your house due to physical limitations?
     </td><td><select name=leaving_home size=4 required>
         <option disabled>Select one:</option>
@@ -83,7 +127,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Do you feel lonely or lack companionship?
     </td><td><select name=lonely size=4 required>
         <option disabled>Select one:</option>
@@ -93,7 +137,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Do you find difficulty with house chores, such as cleaning,
     laundry, grocery shopping or help with bathing and dressing
     and are going without support?
@@ -105,7 +149,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Do you have any safety concerns in your home?  Is it hard for
     you to access your kitchen, bathroom, etc.?
     </td><td><select name=safety size=4 required>
@@ -116,7 +160,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Do you have access to community services such as:
     Transportation resources, help with heating your home,
     buying food, paying bills, or medical expenses?
@@ -127,8 +171,8 @@
         <option value=No>No</option>
     </select>
 </td></tr>
-<tr><td valign=top colspan=2><hr></td></tr>
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top colspan=2><hr></td></tr>
+<tr style='border-bottom:1px;'><td valign=top>
     Does it appear the client has mobility issues?  (i.e. are they
     unstable on their feet, require an assistive device, wheelchair
     bound, etc.)
@@ -140,7 +184,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Does the client's property and home appear to be safe?  (i.e.
     stairs to home are operable, there are no apparent concerns
     for safety within and outsides of the home)
@@ -152,7 +196,7 @@
     </select>
 </td></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     Does the client appear to be homebound?  (i.e. there is no
     use of a vehicles, the client is only able to get out for
     essential means such as medical appointment, and religious
@@ -165,13 +209,13 @@
     </select>
 </td></tr>
 
-<tr><th valign=top colspan=2 align=left>
+<tr style='border-bottom:1px;'><th valign=top colspan=2 align=left>
     Notes:<br>
     <input type=note name=assessor_note>
 </th></tr>
-<tr><th valign=top colspan=2><hr>Staff use only below this line:</th></tr>
+<tr style='border-bottom:1px;'><th valign=top colspan=2><hr>Staff use only below this line:</th></tr>
 
-<tr><td valign=top>
+<tr style='border-bottom:1px;'><td valign=top>
     According to this VCI, the client appears to be eligible for home delivered
     meals:
     </td><td><select name=eligible size=3 required>
@@ -181,16 +225,16 @@
     </select>
 </td></tr>
 
-<tr><th valign=top align=left>Staff name:</th><td>
+<tr style='border-bottom:1px;'><th valign=top align=left>Staff name:</th><td>
     <input type=text name=staff required>
 </td></tr>
-<tr><th valign=top align=left>Staff Signature:</th><td>
+<tr style='border-bottom:1px;'><th valign=top align=left>Staff Signature:</th><td>
     <input type=text name=signature required>
 </td></tr>
-<tr><th valign=top align=left>Date uploaded into WellSky:</th><td>
+<tr style='border-bottom:1px;'><th valign=top align=left>Date uploaded into WellSky:</th><td>
     <input type=date name=upload required>
 </td></tr>
-<tr><th><input type=submit value=Submit onClick='do_submit();'><th></tr>
+<tr><th colspan=2><input class="no-print" type=submit value=Submit onClick='do_submit();'><th></tr>
 </table></form></center>
 </body>
 </html>
