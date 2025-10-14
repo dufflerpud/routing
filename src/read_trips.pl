@@ -15,6 +15,7 @@ use lib "/usr/local/lib/perl";
 use cpi_db;
 use cpi_file;
 use cpi_filename;
+use cpi_inlist;
 use cpi_setup;
 use cpi_vars;
 &cpi_setup::setup();
@@ -200,6 +201,15 @@ sub filter
     my %rates;
     my $donation_percentage = 0;
     my $donation_maximum;
+    my $ncolumns =
+	(
+	&cpi_inlist::inlist( $ARGS{d},
+	    "MOW_Sagadahoc",
+	    "MOW_Lincoln",
+	    "MOW_Cohen_Community_Center" )
+	    ? 6
+	    : 8
+	);
     if( ! $ARGS{r} || $ARGS{r} !~ /\d/ )
 	{
 	&cpi_db::dbread( $cpi_vars::DB ) || &cpi_file::fatal("Cannot opendb($cpi_vars::DB):  $!");
@@ -258,7 +268,7 @@ sub filter
 		" stype=",($stype||"UNDEF"),
 		" rates=",($rates{$stype}||"UNDEF"), ".\n";
 	my $cost = sprintf("%.2f", $distance * $rates{$stype} + $othercost );
-	if( $ARGS{d} eq "MOW_Sagadahoc" )
+	if( $ncolumns == 6 )
 	    { push( @chart_data,
 	    "<tr><td valign=top>",			$dt,
 	    "</td><td valign=top align=right>",		$de,
@@ -293,7 +303,7 @@ sub filter
 	{
 	next if( ! $total_distance_per_category{$stype} );
 	$total_cost_per_category{$stype} = sprintf( "%.2f", $total_cost_per_category{$stype} );
-	if( $ARGS{d} eq "MOW_Sagadahoc" )
+	if( $ncolumns == 6 )
 	    { push( @chart_data, "<tr><th>".&cpi_filename::filename_to_text(${stype})." totals</th>",
 		"<td align=right>",
 		    sprintf("%d:%02d",$total_elapsed_per_category{$stype}/60,$total_elapsed_per_category{$stype}%60),"</td>",
