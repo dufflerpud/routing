@@ -357,7 +357,9 @@ sub do_it
 	}
     closedir( D );
 
-    if( $ARGS{o} !~ /\@/ )
+    if( ! @pdfs )
+        { &fatal("No expenses/trips to report for $ARGS{d}."); }
+    elsif( $ARGS{o} !~ /\@/ )
         { &echodo( join(" ","pdfunite",@pdfs,$ARGS{o}) ); }
     else
 	{
