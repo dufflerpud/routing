@@ -104,6 +104,13 @@ jumping the following major hurdles:
 		connect the cable to the car and/or start Android Auto.
 		Alternately, only program one stop ahead (thereby not using
 		waypoints).</li>
+
+		<li>We've had many problems with Android Auto and
+		Google maps:
+		    <details href="Android_problems.cgi"><summary>Problems with Android Auto</summary
+		        This documentation contains a running list of the problems
+			we're having with Android Auto
+		</details></li>
 	    </ul>
 	</details>
     </details>
