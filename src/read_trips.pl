@@ -12,8 +12,12 @@
 
 use lib "/usr/local/lib/perl";
 #package main;
-use COMMON;
-&COMMON::setup();
+use cpi_db;
+use cpi_file;
+use cpi_filename;
+use cpi_setup;
+use cpi_vars;
+&cpi_setup::setup();
 
 use strict;
 
@@ -21,10 +25,10 @@ use strict;
 
 my $PROJECT		= "routing";
 my $CLIENT		= "Consumers";
-$COMMON::PROG		= ( $_ = $0, s+.*/++, $_ );
-$COMMON::BASEDIR	= "/usr/local/projects/$PROJECT";
+$cpi_vars::PROG		= ( $_ = $0, s+.*/++, $_ );
+$cpi_vars::BASEDIR	= "/usr/local/projects/$PROJECT";
 
-my $EMBED_IMAGES	= "$COMMON::BASEDIR/bin/embed_images";
+my $EMBED_IMAGES	= "$cpi_vars::BASEDIR/bin/embed_images";
 my $CONVERT		= "/usr/local/bin/nene";
 my $WKHTMLTOPDFBIN	= "/usr/local/bin/wkhtmltopdf";
 my $WKHTMLTOPDFCMD	= "$WKHTMLTOPDFBIN --log-level none";
@@ -43,7 +47,7 @@ my %ONLY_ONE_DEFAULTS =
     (
     "r"	=>	"",
     "i"	=>	"/dev/stdin",
-    "h"	=>	"$COMMON::BASEDIR/public_html/mow.html",
+    "h"	=>	"$cpi_vars::BASEDIR/public_html/mow.html",
     "o"	=>	"/dev/stdout",
     "d"	=>	"MOW",
     "u"	=>	"Unknown driver",	# Unused
@@ -67,8 +71,8 @@ my @files;
 #########################################################################
 sub usage
     {
-    &COMMON::fatal( join("\n", @_, "",
-	"Usage:  $COMMON::PROG <possible arguments>","",
+    &cpi_file::fatal( join("\n", @_, "",
+	"Usage:  $cpi_vars::PROG <possible arguments>","",
 	"where <possible arguments> is:",
 	"    -i <trip file>",
 	"    -d <Distributor>",
@@ -157,16 +161,16 @@ sub standardize_route
 sub map_name_to_ind
     {
     my( $table, $name, $retval ) = @_;
-    foreach my $ind ( &COMMON::dbget($COMMON::DB,$table) )	# Who doesn't like a nice linear search?
+    foreach my $ind ( &cpi_db::dbget($cpi_vars::DB,$table) )	# Who doesn't like a nice linear search?
 	{
-	my $checkname = &COMMON::dbget($COMMON::DB, $ind, "Name" );
+	my $checkname = &cpi_db::dbget($cpi_vars::DB, $ind, "Name" );
 
 	return $ind
 	    if( $checkname eq $name
-	     || &COMMON::text_to_filename($checkname) eq $name );
+	     || &cpi_filename::text_to_filename($checkname) eq $name );
 	}
     return $retval if( defined($retval) );
-    &fatal("Cannot map $name to an index in the $table table.");
+    &cpi_file::fatal("Cannot map $name to an index in the $table table.");
     }
 
 
@@ -175,7 +179,7 @@ sub map_name_to_ind
 #########################################################################
 sub filter
     {
-#    open( INF, $STANDARD_ROUTES ) || &COMMON::fatal("Cannot read ${STANDARD_ROUTES}:  $!");
+#    open( INF, $STANDARD_ROUTES ) || &cpi_file::fatal("Cannot read ${STANDARD_ROUTES}:  $!");
 #    while( $_ = <INF> )
 #        {
 #	chomp( $_ );
@@ -198,28 +202,28 @@ sub filter
     my $donation_maximum;
     if( ! $ARGS{r} || $ARGS{r} !~ /\d/ )
 	{
-	&COMMON::dbread( $COMMON::DB ) || &COMMON::fatal("Cannot opendb($COMMON::DB):  $!");
+	&cpi_db::dbread( $cpi_vars::DB ) || &cpi_file::fatal("Cannot opendb($cpi_vars::DB):  $!");
 	my $distributor_ind = &map_name_to_ind( "Distributor", $ARGS{d} );
 	my $staff_ind = &map_name_to_ind( "Staff", $ARGS{u} );
 	$ARGS{r} =
-	    &COMMON::dbget( $COMMON::DB, $distributor_ind, "Reimbursement" );
+	    &cpi_db::dbget( $cpi_vars::DB, $distributor_ind, "Reimbursement" );
 	$donation_percentage =
-	    &COMMON::dbget( $COMMON::DB, $staff_ind, "Donation_percentage" )
+	    &cpi_db::dbget( $cpi_vars::DB, $staff_ind, "Donation_percentage" )
 	    || 0;
 	$donation_maximum =
-	    &COMMON::dbget( $COMMON::DB, $staff_ind, "Donation_maximum" )
+	    &cpi_db::dbget( $cpi_vars::DB, $staff_ind, "Donation_maximum" )
 	    || 0;
-	&COMMON::dbclose( $COMMON::DB );
+	&cpi_db::dbclose( $cpi_vars::DB );
 	}
 
-    open( INF, "$COMMON::BASEDIR/Distributors/$ARGS{d}/invoice.pl" )
-	|| &COMMON::fatal("Cannot read $COMMON::BASEDIR/Distributors/$ARGS{d}/invoice.pl:  $!");
+    open( INF, "$cpi_vars::BASEDIR/Distributors/$ARGS{d}/invoice.pl" )
+	|| &cpi_file::fatal("Cannot read $cpi_vars::BASEDIR/Distributors/$ARGS{d}/invoice.pl:  $!");
     my $PAGE_CONTENTS = join("",<INF>);
     close( INF );
 
-    open( INF, $ARGS{i} ) || &COMMON::fatal("Cannot read $ARGS{i}:  $!");
+    open( INF, $ARGS{i} ) || &cpi_file::fatal("Cannot read $ARGS{i}:  $!");
 
-    &COMMON::fatal("Cannot write $ARGS{f}:  $!")
+    &cpi_file::fatal("Cannot write $ARGS{f}:  $!")
         if( $ARGS{f} && ! open(OUT,">$ARGS{f}") );
 
     foreach $_ ( split(/,/,$ARGS{r}) )
@@ -290,7 +294,7 @@ sub filter
 	next if( ! $total_distance_per_category{$stype} );
 	$total_cost_per_category{$stype} = sprintf( "%.2f", $total_cost_per_category{$stype} );
 	if( $ARGS{d} eq "MOW_Sagadahoc" )
-	    { push( @chart_data, "<tr><th>".&COMMON::filename_to_text(${stype})." totals</th>",
+	    { push( @chart_data, "<tr><th>".&cpi_filename::filename_to_text(${stype})." totals</th>",
 		"<td align=right>",
 		    sprintf("%d:%02d",$total_elapsed_per_category{$stype}/60,$total_elapsed_per_category{$stype}%60),"</td>",
 		"<td></td>",
@@ -320,12 +324,12 @@ sub filter
     #print STDERR "errmessage=[$@]\n" if( $ARGS{v} );
 
     open( OUT, "| $EMBED_IMAGES > $ARGS{h}" )
-	|| &COMMON::fatal("Cannot write $ARGS{h}:  $!");
+	|| &cpi_file::fatal("Cannot write $ARGS{h}:  $!");
     print OUT $page;
     close( OUT );
 
-    #&echodo("$CONVERT $ARGS{h} $ARGS{o}");
-    &echodo("$WKHTMLTOPDFCMD $ARGS{h} $ARGS{o}");
+    #&cpi_file::echodo("$CONVERT $ARGS{h} $ARGS{o}");
+    &cpi_file::echodo("$WKHTMLTOPDFCMD $ARGS{h} $ARGS{o}");
     }
 
 #########################################################################
@@ -338,4 +342,4 @@ sub filter
 
 &filter();
 
-&COMMON::cleanup(0);
+&cpi_file::cleanup(0);

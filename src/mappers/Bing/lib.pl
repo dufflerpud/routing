@@ -1,9 +1,9 @@
 #!/usr/local/bin/perl -w
 use strict;
+package main;
 
-#our %mappers;
-my $mapperp = $mappers{'%%THIS%%'};
-$mapperp->{name} = "Bing route format";
+my $DRIVER={};
+$DRIVER->{name} = "Bing route format";
 
 #########################################################################
 #	The address format used by the Bing url.  Silly.		#
@@ -19,7 +19,7 @@ sub bing_addr
 #########################################################################
 #	Generate a URL to Bing maps from a route.			#
 #########################################################################
-$mapperp->{route_to_url} = sub
+$DRIVER->{route_to_url} = sub
     {
     my( $map_start, $map_end, @loc_list ) = @_;
     my @res = ( "https://bing.com/maps/default.aspx?" );

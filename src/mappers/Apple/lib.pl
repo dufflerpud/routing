@@ -1,14 +1,14 @@
 #!/usr/local/bin/perl -w
 use strict;
 
-#our %mappers;
-my $mapperp = $mappers{'%%THIS%%'};
-$mapperp->{name} = "Apple route format";
+package main;
+my $DRIVER={};
+$DRIVER->{name} = "Apple route format";
 
 #########################################################################
 #	Generate a URL to Apple maps from a route.			#
 #########################################################################
-$mapperp->{route_to_url} = sub
+$DRIVER->{route_to_url} = sub
     {
     my( $map_start, $map_end, @loc_list ) = @_;
     my @res = ( "https://beta.maps.Apple.com/?dirflg=d" );
@@ -20,11 +20,10 @@ $mapperp->{route_to_url} = sub
 #########################################################################
 #	Return the javascript with any substitutions.			#
 #########################################################################
-$mapperp->{js} = sub
+$DRIVER->{js} = sub
     {
     my( $dist ) = @_;
-    my $mapperp = $mappers{'%%THIS%%'};
-    return &COMMON::template( $mapperp->{dir}."/lib.js" );
+    return &cpi_template::template( $DRIVER->{dir}."/lib.js" );
     };
 
 1;

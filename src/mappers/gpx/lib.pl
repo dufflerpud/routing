@@ -8,23 +8,22 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
+package main;
 
-#our %mappers;
-my $mapperp = $mappers{'%%THIS%%'};
-$mapperp->{name} = "GPX format";
-$mapperp->{minmaps} = 1;
-$mapperp->{maxmaps} = 100;
+my $DRIVER={};
+$DRIVER->{name} = "GPX format";
+$DRIVER->{minmaps} = 1;
+$DRIVER->{maxmaps} = 100;
 
 our @MAPCOLORS;
 
 #########################################################################
 #########################################################################
-#$mapperp->{expected} = sub
+#$DRIVER->{expected} = sub
 #    {
-#    my $mapperp = $mappers{'%%THIS%%'};
 #    my( $title, $input_p ) = @_;
-#    return &COMMON::template(
-#        $mapperp->{template},
+#    return &cpi_template::template(
+#        $DRIVER->{template},
 #        "%%CREATOR%%", ?
 #        "%%ACTUAL_DATA%%", ? );
 #    };
@@ -33,7 +32,7 @@ my @GPX_COLORS;
 #########################################################################
 #	Return trkpt string from progress GPS list.			#
 #########################################################################
-$mapperp->{progress_to_trkpts} = sub
+$DRIVER->{progress_to_trkpts} = sub
     {
     my( $title, $input_p ) = @_;
     my @ret;
@@ -51,7 +50,7 @@ $mapperp->{progress_to_trkpts} = sub
 		push( @pcs, &indent(__LINE__,
 		    "<trkpt", " lat=\"$sptp->{lat}\"", " lon=\"$sptp->{lng}\">\n",
 		    &indent(__LINE__, " <time>",
-		    &COMMON::time_string($GLOBAL_TIME_FMT,$sptp->{when}), "</time>"),
+		    &cpi_time::time_string($main::GLOBAL_TIME_FMT,$sptp->{when}), "</time>"),
 		    "</trkpt>"
 		    ) );
 		}
@@ -70,10 +69,10 @@ $mapperp->{progress_to_trkpts} = sub
 #########################################################################
 #	Add the stops to the event_list as wpts				#
 #########################################################################
-$mapperp->{stops_to_waypoints} = sub
+$DRIVER->{stops_to_waypoints} = sub
     {
     my( $title, $input_p ) = @_;
-    my($sec,$min,$hour,$mday,$month,$year) = localtime($now);
+    my($sec,$min,$hour,$mday,$month,$year) = localtime($main::now);
     my $stops = $input_p->{stops};
     my $display_order = $input_p->{display_order};
     my @ret = ();
@@ -87,7 +86,7 @@ $mapperp->{stops_to_waypoints} = sub
 	my $ind = ($stop->{patrons} || "");
 	my $tbl = &rec_type( $ind );
 	my $gpxtim = timelocal(0,$min,$hour,$mday,$month,$year);
-	my $global_time_str = &COMMON::time_string( $GLOBAL_TIME_FMT, $gpxtim );
+	my $global_time_str = &cpi_time::time_string( $main::GLOBAL_TIME_FMT, $gpxtim );
 	my ($lat,$lon) = split(/,/,$stop->{coords}||"0,0");
 	push( @ret,
 	    "<wpt lat=\"$lat\" lon=\"$lon\">\n",
@@ -109,7 +108,7 @@ $mapperp->{stops_to_waypoints} = sub
 			    ?  $stop->{note}
 			    : "" ) ),
 		    "</desc>\n",
-	        "<url>","$PROG_URL?func=/Search,$tbl,$ind","</url>"),
+	        "<url>","$main::PROG_URL?func=/Search,$tbl,$ind","</url>"),
 	    "</wpt>\n"
 	    );
 	}
@@ -119,9 +118,8 @@ $mapperp->{stops_to_waypoints} = sub
 #########################################################################
 #	Return a GPX file from the GPS list and the various stops.	#
 #########################################################################
-$mapperp->{progress} = sub
+$DRIVER->{progress} = sub
     {
-    my $mapperp = $mappers{'%%THIS%%'};
     my( $title, @input_ps ) = @_;
 
     my @pieces;
@@ -129,13 +127,13 @@ $mapperp->{progress} = sub
         {
 	push( @pieces,
 	    &indent(__LINE__,
-	    &{$mapperp->{progress_to_trkpts}}( $input_p->{title}, $input_p ),
-	    &{$mapperp->{stops_to_waypoints}}( $input_p->{title}, $input_p ) ) );
+	    &{$DRIVER->{progress_to_trkpts}}( $input_p->{title}, $input_p ),
+	    &{$DRIVER->{stops_to_waypoints}}( $input_p->{title}, $input_p ) ) );
 	}
 
-    return &COMMON::template(
-	$mapperp->{template},
-	"%%CREATOR%%", ucfirst( $PROG ),
+    return &cpi_template::template(
+	$DRIVER->{template},
+	"%%CREATOR%%", ucfirst( $cpi_vars::PROG ),
 	"%%ACTUAL_DATA%%", join("",@pieces) );
     };
 

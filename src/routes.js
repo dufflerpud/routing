@@ -2029,9 +2029,16 @@ function generate_update( doneflag )
 		}
 	    else
 		{
-	        var travelled_pretty = (travelled + 0.05).toFixed(1);
+	        // var travelled_pretty = (travelled + 0.05).toFixed(1);
+	        var travelled_pretty = travelled.toFixed(1);
 		if( ! confirm(
 			    "XL(Log) "
+//			+	stops[ stops.length-1 ].odometer
+//			+	" minus "
+//			+	stops[0].odometer
+//			+	" equals "
+//			+	travelled
+//			+	" or "
 			+   travelled_pretty + " XL(miles from) "
 			+   stops[0].odometer + " XL(to) "
 			+   stops[ stops.length-1 ].odometer

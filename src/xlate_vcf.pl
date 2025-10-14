@@ -17,14 +17,14 @@ use JSON;
 package main;
 do "./common.pl";
 
-&COMMON::setup( );
+&cpi_setup::setup( );
 
 # Put constants here
 
-my $PROG = ( $_ = $0, s+.*/++, s/\.[^\.]*$//, $_ );
-my $TMP = "/tmp/$PROG.$$";
+my $cpi_vars::PROG = ( $_ = $0, s+.*/++, s/\.[^\.]*$//, $_ );
+my $TMP = "/tmp/$cpi_vars::PROG.$$";
 my $BASE = "/usr/local/projects/Routing";
-my $CACHEDIR = "$BASE/cache";
+my $cpi_vars::CACHEDIR = "$BASE/cache";
 my $TEMPLATE = "${BASE}/lib/routes.html";
 
 my %CFG =
@@ -91,23 +91,23 @@ my %route;
 #########################################################################
 #	Avoid some typing.  Make prettier code.				#
 #########################################################################
-sub DBread	{ return &COMMON::dbread($COMMON::DB); }
-sub DBwrite	{ return &COMMON::dbwrite($COMMON::DB); }
-sub DBpop	{ return &COMMON::dbpop($COMMON::DB); }
-sub DBget	{ return &COMMON::dbget($COMMON::DB,@_); }
-sub DBput	{ return &COMMON::dbput($COMMON::DB,@_); }
-sub DBdelkey	{ return &COMMON::dbdelkey($COMMON::DB,@_); }
-sub DBadd	{ return &COMMON::dbadd($COMMON::DB,@_); }
-sub DBdel	{ return &COMMON::dbdel($COMMON::DB,@_); }
-sub DBnewkey	{ return &COMMON::dbnewkey($COMMON::DB,@_); }
+sub DBread	{ return &cpi_db::dbread($cpi_vars::DB); }
+sub DBwrite	{ return &cpi_db::dbwrite($cpi_vars::DB); }
+sub DBpop	{ return &cpi_db::dbpop($cpi_vars::DB); }
+sub DBget	{ return &cpi_db::dbget($cpi_vars::DB,@_); }
+sub DBput	{ return &cpi_db::dbput($cpi_vars::DB,@_); }
+sub DBdelkey	{ return &cpi_db::dbdelkey($cpi_vars::DB,@_); }
+sub DBadd	{ return &cpi_db::dbadd($cpi_vars::DB,@_); }
+sub DBdel	{ return &cpi_db::dbdel($cpi_vars::DB,@_); }
+sub DBnewkey	{ return &cpi_db::dbnewkey($cpi_vars::DB,@_); }
 
 #########################################################################
 #	Print usage message and die.					#
 #########################################################################
 sub usage
     {
-    &COMMON::fatal( @_, "",
-	"Usage:  $PROG <possible arguments> <vcf files>","",
+    &cpi_file::fatal( @_, "",
+	"Usage:  $cpi_vars::PROG <possible arguments> <vcf files>","",
 	"where <possible arguments> is:",
 	"    -t <output .txt file>",
 	"    -h <output .html or .pdf file>",
@@ -223,7 +223,7 @@ sub read_contacts
 	if( ! $to_open );
 
     my $refp;
-    eval( "\$refp = " . &read_file( $to_open ) );
+    eval( "\$refp = " . &cpi_file::read_file( $to_open ) );
 
     my %points = ();
     foreach my $entryp ( @{ $refp } )
@@ -273,7 +273,7 @@ sub read_contacts
 	    { $route{beginpoint} = $route{endpoint} = $points{mow}[0]; }
 	else
 	    {	# No endpoints?  No mowpoints?  Make something up.
-	    &COMMON::fatal( "No Routing Driver or Routing Staff specified.\n" .
+	    &cpi_file::fatal( "No Routing Driver or Routing Staff specified.\n" .
 	    	"You probably want to add one before proceeding.\n" );
 	    $route{beginpoint} = $route{endpoint} = $_ = $ORIGIN{stop};
 	    $stop{$_}{address} = $ORIGIN{address};
@@ -319,13 +319,13 @@ sub read_contacts
 #########################################################################
 #	Generate a small unique id					#
 #########################################################################
-my @COMPACT_LEX = ( '0'..'9', 'A'..'Z', 'a'..'z', '_' );
+my @cpi_compress_integer::COMPACT_LEX = ( '0'..'9', 'A'..'Z', 'a'..'z', '_' );
 sub unique_id
     {
     my @compact=();
     my $t = time();
-    my $l = scalar(@COMPACT_LEX);
-    do { push( @compact, $COMPACT_LEX[ $t % $l ] ); } while( $t = int($t/$l) );
+    my $l = scalar(@cpi_compress_integer::COMPACT_LEX);
+    do { push( @compact, $cpi_compress_integer::COMPACT_LEX[ $t % $l ] ); } while( $t = int($t/$l) );
     return join("",reverse(@compact));
     }
 
@@ -359,7 +359,7 @@ sub read_file
 	close( INF );
 	}
     elsif( scalar(@_) < 2 )
-        { &COMMON::fatal("Cannot open ${fname}:  $!"); }
+        { &cpi_file::fatal("Cannot open ${fname}:  $!"); }
     return $ret;
     }
 
@@ -369,7 +369,7 @@ sub read_file
 sub write_file
     {
     my( $fname, @contents ) = @_;
-    open( OUT, "> $fname" ) || &COMMON::fatal("Cannot write ${fname}:  $!");
+    open( OUT, "> $fname" ) || &cpi_file::fatal("Cannot write ${fname}:  $!");
     print OUT @contents;
     close( OUT );
     print STDERR $fname, " written.\n";
@@ -416,12 +416,12 @@ sub query_mapquest
 	    ) . "}";
 
     my $results;
-    my $cache_base = "$CACHEDIR/$current_route";
+    my $cache_base = "$cpi_vars::CACHEDIR/$current_route";
     my $query_file = "$cache_base.query.json";
     my $result_file = "$cache_base.result.json";
 
-    if( &read_file( $query_file, "" ) eq $jsonpart )
-	{ $results = &read_file( $result_file ); }
+    if( &cpi_file::read_file( $query_file, "" ) eq $jsonpart )
+	{ $results = &cpi_file::read_file( $result_file ); }
     else
 	{
 	my $coded_jsonpart = $jsonpart;
@@ -435,10 +435,10 @@ sub query_mapquest
 
 	my $cmd = ( -f "/usr/bin/curl" ? "curl -s '$url'" : "wget -q -O - '$url'" );
 	#print "Opening [$cmd]\n";
-	$results = &read_file( "$cmd |" );
+	$results = &cpi_file::read_file( "$cmd |" );
 
-	&write_file( $query_file, $jsonpart );
-	&write_file( $result_file, $results );
+	&cpi_file::write_file( $query_file, $jsonpart );
+	&cpi_file::write_file( $result_file, $results );
 	}
 
     my $refp = decode_json( $results );
@@ -595,7 +595,7 @@ sub contacts_to_db
     {
     my( $outname ) = @_;
 
-    # $COMMON::DB = $outname;
+    # $cpi_vars::DB = $outname;
  
     &DBwrite();
     &setup_objs();
@@ -619,7 +619,7 @@ sub contacts_to_db
 
     #
     my $orgaddr = $endpoint{staff} || $endpoint{driver};
-    &COMMON::fatal("VCF requires staff or driver.") if( ! $orgaddr );
+    &cpi_file::fatal("VCF requires staff or driver.") if( ! $orgaddr );
     my $distributorname =
 	( $orgaddr =~ /1766 Federal/			? "MOW Livermore"
 	: $orgaddr =~ /239 Temple/			? "MOW Livermore"
@@ -723,8 +723,8 @@ sub contacts_to_csv
     {
     my( $outname ) = @_;
 
-    &write_file( $outname, join("\n",
-	(map {join(",",$stop{$_}{address},join(" and ",@{$stop{${_}{names}}}))} &reorder() ),
+    &cpi_file::write_file( $outname, join("\n",
+	(map {join(",",$stop{$_}{address},join(" and ",@{$stop{${_}{names}}}))} &cpi_reorder::reorder() ),
 	""
 	) );
     }
@@ -747,8 +747,8 @@ sub contacts_to_text
 	    }
 	}
 
-    &write_file( $outname, join("\n",
-	( map{$_}{ ($stop{name_string}, $spacer.$stop{$_}{address}) } &reorder() ),
+    &cpi_file::write_file( $outname, join("\n",
+	( map{$_}{ ($stop{name_string}, $spacer.$stop{$_}{address}) } &cpi_reorder::reorder() ),
 	"") );
     }
 
@@ -760,10 +760,10 @@ sub contacts_to_best_route
     {
     my( $outname ) = @_;
 
-    &write_file( $outname, join("\n",
+    &cpi_file::write_file( $outname, join("\n",
 	"name=car0 begin=\"$stop{coords}}\" end=\"$stop{$route{endpoint}{coords}}\"",
 	(map {"name=\"".$stop{name_string}."\" where=\"".($stop{$_}{coords}||"?,?").'"'}
-	    &reorder()), "") );
+	    &cpi_reorder::reorder()), "") );
     }
 
 #########################################################################
@@ -847,7 +847,7 @@ sub contacts_to_html
     {
     my( $outname ) = @_;
 
-    my @reordered_stops = &reorder();
+    my @reordered_stops = &cpi_reorder::reorder();
 
     #my $TITLE = $current_route . " route ($total_distance miles)";
     my $TITLE = $current_route . " route";;
@@ -884,7 +884,7 @@ sub contacts_to_html
 	"var stops =\n    [\t{" . join("},\n\t{",@jtable) . "} ];",
 	"//} INIT" );
 
-    my $template = &read_file( $TEMPLATE );
+    my $template = &cpi_file::read_file( $TEMPLATE );
 
     if( $ARGS{l} )
         {
@@ -918,7 +918,7 @@ sub contacts_to_html
 		    push( @epieces,
 			"<$tag", $preincsrc, "incsrc='", $incsrc, "'",
 			$postincsrc, ">\n",
-			&read_file( $incsrc ),
+			&cpi_file::read_file( $incsrc ),
 			$tagbody, "\n",
 			"</$tag>\n" );
 		    }
@@ -933,11 +933,11 @@ sub contacts_to_html
     $template =~ s/%%COMPLETED_CGI%%/completed_route_update.cgi/ms;
 
     if( $outname =~ /\.htm$/i || $outname =~ /\.html$/i )
-        { &write_file( $outname, $template ); }
+        { &cpi_file::write_file( $outname, $template ); }
     else
         {
 	my $cmd = "$CVT -.html $outname";
-	open( OUT, "| $cmd" ) || &COMMON::fatal("Cannot ${cmd}:  $!");
+	open( OUT, "| $cmd" ) || &cpi_file::fatal("Cannot ${cmd}:  $!");
 	print OUT $template;
 	close( OUT );
 	}
@@ -958,4 +958,4 @@ sub contacts_to_html
 &contacts_to_best_route		( $ARGS{p} )	if( $ARGS{p} );
 &contacts_to_html		( $ARGS{h} )	if( $ARGS{h} );
 
-&COMMON::cleanup(0);
+&cpi_file::cleanup(0);

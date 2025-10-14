@@ -8,17 +8,17 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
+package main;
 
-#our %mappers;
-my $mapperp = $mappers{'%%THIS%%'};
-$mapperp->{name} = "Google KML format";
-$mapperp->{minmaps} = 1;
-$mapperp->{maxmaps} = 100;
+my $DRIVER={};
+$DRIVER->{name} = "Google KML format";
+$DRIVER->{minmaps} = 1;
+$DRIVER->{maxmaps} = 100;
 
 #########################################################################
 #	Generate a bunch of styles with color definitions.		#
 #########################################################################
-$mapperp->{generate_colors} = sub
+$DRIVER->{generate_colors} = sub
     {
     my @AABBGGRR = &colors_by("AABBGGRR");
     my @PADDLES = &colors_by("Paddle");
@@ -31,14 +31,13 @@ $mapperp->{generate_colors} = sub
 #########################################################################
 #	Return trkpt string from progress GPS list.			#
 #########################################################################
-$mapperp->{progress_to_tracks} = sub
+$DRIVER->{progress_to_tracks} = sub
     {
-    my $mapperp = $mappers{'%%THIS%%'};
     my( $title, $input_p ) = @_;
     my @res;
     foreach my $latlng_p ( $input_p->{progress_p}, $input_p->{expected_p} )
 	{
-	push( @res, &{$mapperp->{tracks}}(
+	push( @res, &{$DRIVER->{tracks}}(
 	    $title,
 	    ( defined($input_p->{color})
 		? $input_p->{color}
@@ -54,11 +53,10 @@ $mapperp->{progress_to_tracks} = sub
 #########################################################################
 #	Add the stops to the event_list as waypoints			#
 #########################################################################
-$mapperp->{stops_to_waypoints} = sub
+$DRIVER->{stops_to_waypoints} = sub
     {
-    my $mapperp = $mappers{'%%THIS%%'};
     my( $title, $input_p )			= @_;
-    my($sec,$min,$hour,$mday,$month,$year)	= localtime($now);
+    my($sec,$min,$hour,$mday,$month,$year)	= localtime($main::now);
     my $stops					= $input_p->{stops};
     my $display_order				= $input_p->{display_order};
     my @ret;
@@ -81,7 +79,7 @@ $mapperp->{stops_to_waypoints} = sub
 	    else
 		{ $stop->{color} = 1; }
 	    $stop->{time} ||= timelocal(0,$min,$hour,$mday,$month,$year);
-	    push( @ret, &{$mapperp->{stop}}($stop));
+	    push( @ret, &{$DRIVER->{stop}}($stop));
 	    }
 	}
 
@@ -99,9 +97,8 @@ $mapperp->{stops_to_waypoints} = sub
 #########################################################################
 #	Return a kml file from the GPS list and the various stops.	#
 #########################################################################
-$mapperp->{progress} = sub
+$DRIVER->{progress} = sub
     {
-    my $mapperp = $mappers{'%%THIS%%'};
     my( $title, @input_ps ) = @_;
 
     my @pieces;
@@ -109,14 +106,14 @@ $mapperp->{progress} = sub
         {
 	push( @pieces,
 	    &indent(__LINE__,
-		&indent(__LINE__,&{$mapperp->{progress_to_tracks}}($input_p->{title},$input_p)),
-		&indent(__LINE__,&{$mapperp->{stops_to_waypoints}}($input_p->{title},$input_p)))
+		&indent(__LINE__,&{$DRIVER->{progress_to_tracks}}($input_p->{title},$input_p)),
+		&indent(__LINE__,&{$DRIVER->{stops_to_waypoints}}($input_p->{title},$input_p)))
 	    )
 	}
 
-    return &COMMON::template( $mapperp->{template},
+    return &cpi_template::template( $DRIVER->{template},
 	"%%TITLE%%", $title,
-	"%%COLORS%%", &{$mapperp->{generate_colors}}(),
+	"%%COLORS%%", &{$DRIVER->{generate_colors}}(),
 	"%%ACTUAL_DATA%%", join("",@pieces )
 	);
     };
@@ -124,12 +121,12 @@ $mapperp->{progress} = sub
 #########################################################################
 #	Returns kmleese text for a stop but takes times, stati & note.	#
 #########################################################################
-$mapperp->{stop} = sub
+$DRIVER->{stop} = sub
     {
     my( $stop_argp )	= @_;
     my $ind			= $stop_argp->{ind};
     my $markcolor		= $stop_argp->{color};
-    my $global_time_str		= &COMMON::time_string( $GLOBAL_TIME_FMT, $stop_argp->{time} );
+    my $global_time_str		= &cpi_time::time_string( $main::GLOBAL_TIME_FMT, $stop_argp->{time} );
     my( $lat, $lon )		= split(/,/, ($stop_argp->{coords}||&DBget($ind,"Coords")||"UNDEF") );
     return join("",
        "<Placemark>\n",
@@ -160,7 +157,7 @@ $mapperp->{stop} = sub
 
 #########################################################################
 #########################################################################
-$mapperp->{tracks} = sub
+$DRIVER->{tracks} = sub
     {
     my( $title, $linecolor, @coordlist ) = @_;
     return
@@ -194,15 +191,14 @@ $mapperp->{tracks} = sub
 ##########################################################################
 ##	Creates a KML pieces for each waypoint in expected route.	#
 ##########################################################################
-#$mapperp->{waypoints_from_expected} = sub
+#$DRIVER->{waypoints_from_expected} = sub
 #    {
-#    my $mapperp = $mappers{'%%THIS%%'};
 #    my( $title, $route_ind, @patron_order ) = @_;
 #    my @ret;
 #    #debugout(__LINE__,"Waypoints_from_expected($route_ind) starting...");
 #    foreach my $ind ( @patron_order )
 #	{
-#	push( @ret, &{$mapperp->{stop}}({
+#	push( @ret, &{$DRIVER->{stop}}({
 #	    ind		=>	$ind,
 #	    time	=>	time(),
 #	    status	=>	(&DBget($ind,"Status")||"No Status"),
@@ -227,9 +223,8 @@ $mapperp->{tracks} = sub
 ##	Creates a KML file for the route specified.  Not necessarily	#
 ##	route driver actually took, but something to compare against.	#
 ##########################################################################
-#$mapperp->{expected} = sub
+#$DRIVER->{expected} = sub
 #    {
-#    my $mapperp = $mappers{'%%THIS%%'};
 #    my( $route_ind,
 #	$distributor_ind,
 #	$distributor_name,
@@ -240,15 +235,15 @@ $mapperp->{tracks} = sub
 #    &setup_file( ">" .
 #	join("/",
 #	    $EXPECTED_DIR,
-#	    &COMMON::text_to_filename($distributor_name),
-#	    &COMMON::text_to_filename($route_name).".".$mapperp->{extension} ),
-#	&COMMON::template( $mapperp->{template},
+#	    &cpi_filename::text_to_filename($distributor_name),
+#	    &cpi_filename::text_to_filename($route_name).".".$DRIVER->{extension} ),
+#	&cpi_template::template( $DRIVER->{template},
 #	    "%%TITLE%%", $title,
-#	    "%%COLORS%%", &{$mapperp->{generate_colors}}(),
+#	    "%%COLORS%%", &{$DRIVER->{generate_colors}}(),
 #	    "%%ACTUAL_DATA%%",
 #		join("",
-#		    &{$mapperp->{tracks}}( $title, "red", @rt_coords ),
-#		    &{$mapperp->{waypoints_from_expected}}( $title, $route_ind, @order)))
+#		    &{$DRIVER->{tracks}}( $title, "red", @rt_coords ),
+#		    &{$DRIVER->{waypoints_from_expected}}( $title, $route_ind, @order)))
 #	);
 #    };
 

@@ -8,17 +8,17 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
+package main;
 
-#our %mappers;
-my $mapperp = $mappers{'%%THIS%%'};
-$mapperp->{name} = "Perl object";
-$mapperp->{minmaps} = 1;
-$mapperp->{maxmaps} = 100;
+my $DRIVER={};
+$DRIVER->{name} = "Perl object";
+$DRIVER->{minmaps} = 1;
+$DRIVER->{maxmaps} = 100;
 
 #########################################################################
 #	Return a perl object the GPS list and the various stops.	#
 #########################################################################
-$mapperp->{progress} = sub
+$DRIVER->{progress} = sub
     {
     my( $title, @input_ps ) = @_;
     return Data::Dumper->Dump( [ \@input_ps ], [ '*routes' ] );
