@@ -8,17 +8,23 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
-package main;
 
-my $DRIVER={};
-$DRIVER->{name} = "Perl object";
-$DRIVER->{minmaps} = 1;
-$DRIVER->{maxmaps} = 100;
+use strict;
+
+package main;
+use lib "/usr/local/lib/perl";
+use cpi_drivers qw( get_drivers device_debug get_driver );
+
+my $driverp = &get_driver(__FILE__);
+
+$driverp->{name} = "Perl object";
+$driverp->{minmaps} = 1;
+$driverp->{maxmaps} = 100;
 
 #########################################################################
 #	Return a perl object the GPS list and the various stops.	#
 #########################################################################
-$DRIVER->{progress} = sub
+$driverp->{progress} = sub
     {
     my( $title, @input_ps ) = @_;
     return Data::Dumper->Dump( [ \@input_ps ], [ '*routes' ] );

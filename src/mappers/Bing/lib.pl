@@ -1,9 +1,13 @@
 #!/usr/local/bin/perl -w
 use strict;
-package main;
 
-my $DRIVER={};
-$DRIVER->{name} = "Bing route format";
+package main;
+use lib "/usr/local/lib/perl";
+use cpi_drivers qw( get_drivers device_debug get_driver );
+
+my $driverp = &get_driver(__FILE__);
+
+$driverp->{name} = "Bing route format";
 
 #########################################################################
 #	The address format used by the Bing url.  Silly.		#
@@ -19,7 +23,7 @@ sub bing_addr
 #########################################################################
 #	Generate a URL to Bing maps from a route.			#
 #########################################################################
-$DRIVER->{route_to_url} = sub
+$driverp->{route_to_url} = sub
     {
     my( $map_start, $map_end, @loc_list ) = @_;
     my @res = ( "https://bing.com/maps/default.aspx?" );

@@ -9,31 +9,35 @@
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
 
-package main;
 use JSON;
 
-my $DRIVER={};
-$DRIVER->{name} = "GeoJSON format";
-$DRIVER->{minmaps} = 1;
-$DRIVER->{maxmaps} = 100;
-@{$DRIVER->{COLORS}} = &colors_by("rrggbb");
-@{$DRIVER->{labels}} = ( 'A'..'Z', '0'-'9', 'a'-'z' );
-$DRIVER->{label_ind} = 0;
+package main;
+use lib "/usr/local/lib/perl";
+use cpi_drivers qw( get_drivers device_debug get_driver );
+
+my $driverp = &get_driver(__FILE__);
+
+$driverp->{name} = "GeoJSON format";
+$driverp->{minmaps} = 1;
+$driverp->{maxmaps} = 100;
+@{$driverp->{COLORS}} = &main::colors_by("rrggbb");
+@{$driverp->{labels}} = ( 'A'..'Z', '0'..'9', 'a'..'z' );
+$driverp->{label_ind} = 0;
 
 #########################################################################
 #	Return trkpt string from progress GPS list.			#
 #########################################################################
-$DRIVER->{progress_to_tracks} = sub
+$driverp->{progress_to_tracks} = sub
     {
     my( $title, $input_p ) = @_;
     my @ret;
     foreach my $latlng_p ( $input_p->{progress_p}, $input_p->{expected_p} )
 	{
-	push( @ret, &{$DRIVER->{tracks}}(
+	push( @ret, &{$driverp->{tracks}}(
 	    $title,
 	    ( defined($input_p->{color})
-		? $DRIVER->{COLORS}[$input_p->{color}]
-		: $DRIVER->{COLORS}[$input_p->{done}]
+		? $driverp->{COLORS}[$input_p->{color}]
+		: $driverp->{COLORS}[$input_p->{done}]
 		? 0
 		: 1 ),
 		@{$latlng_p} ) )
@@ -45,7 +49,7 @@ $DRIVER->{progress_to_tracks} = sub
 #########################################################################
 #	Add the stops to the event_list as waypoints			#
 #########################################################################
-$DRIVER->{stops_to_waypoints} = sub
+$driverp->{stops_to_waypoints} = sub
     {
     my( $title, $input_p )			= @_;
     my($sec,$min,$hour,$mday,$month,$year)	= localtime($main::now);
@@ -71,7 +75,7 @@ $DRIVER->{stops_to_waypoints} = sub
 	    else
 		{ $stop->{color} = 1; }
 	    $stop->{time} ||= timelocal(0,$min,$hour,$mday,$month,$year);
-	    push( @ret, &{$DRIVER->{stop}}($stop));
+	    push( @ret, &{$driverp->{stop}}($stop));
 	    }
 	}
 
@@ -81,7 +85,7 @@ $DRIVER->{stops_to_waypoints} = sub
 #########################################################################
 #	Return a GeoJSON file from the GPS list and the various stops.	#
 #########################################################################
-$DRIVER->{progress} = sub
+$driverp->{progress} = sub
     {
     my( $title, @input_ps ) = @_;
 
@@ -92,8 +96,8 @@ $DRIVER->{progress} = sub
     foreach my $input_p ( @input_ps )
         {
 	push( @{$feature->{features}},
-	    &{$DRIVER->{progress_to_tracks}}($input_p->{title},$input_p),
-	    &{$DRIVER->{stops_to_waypoints}}($input_p->{title},$input_p) );
+	    &{$driverp->{progress_to_tracks}}($input_p->{title},$input_p),
+	    &{$driverp->{stops_to_waypoints}}($input_p->{title},$input_p) );
 	}
 
     #return encode_json( $feature );
@@ -104,11 +108,11 @@ $DRIVER->{progress} = sub
 #	Returns GeoJSON-eese text for a stop but takes times,		#
 #	stati & note.							#
 #########################################################################
-$DRIVER->{stop} = sub
+$driverp->{stop} = sub
     {
     my( $stop_argp )	= @_;
     my $ind			= $stop_argp->{ind};
-    my $markcolor		= $DRIVER->{COLORS}[$stop_argp->{color}];
+    my $markcolor		= $driverp->{COLORS}[$stop_argp->{color}];
     my $global_time_str		= &cpi_time::time_string( $main::GLOBAL_TIME_FMT, $stop_argp->{time} );
     my( $lat, $lon )		= split(/,/, ($stop_argp->{coords}||&DBget($ind,"Coords")||"UNDEF") );
     return
@@ -124,7 +128,7 @@ $DRIVER->{stop} = sub
 	    "icon"	=>	"bubble",
 	    "marker-color"	=>	"#".$markcolor,
 	    "text-color"	=>	"#".$markcolor,
-#	    "label"	=>	$DRIVER->{labels}[ $DRIVER->{labelind}++ ],
+#	    "label"	=>	$driverp->{labels}[ $driverp->{labelind}++ ],
 #	    "Name"	=>	
 #		($stop_argp->{name} || &DBget($ind,"Name") ||"No name"),
 	    "label"	=>	
@@ -144,7 +148,7 @@ $DRIVER->{stop} = sub
 #	Returns a pointer to a structure suitable for encoding to JSON	#
 #	showing the track somebody took.				#
 #########################################################################
-$DRIVER->{tracks} = sub
+$driverp->{tracks} = sub
     {
     my( $title, $linecolor, @coordlist ) = @_;
     return
@@ -152,7 +156,7 @@ $DRIVER->{tracks} = sub
 		"properties"		=>
 		    {
 		    "description"	=>	"Tracks for $title",
-		    "stroke"		=>	"#".$DRIVER->{COLORS}[$linecolor]
+		    "stroke"		=>	"#".$driverp->{COLORS}[$linecolor]
 		    },
 		"geometry"		=>
 		    {
@@ -166,14 +170,14 @@ $DRIVER->{tracks} = sub
 ##########################################################################
 ##	Creates json piece for each waypoint in expected route.		#
 ##########################################################################
-#$DRIVER->{waypoints_from_expected} = sub
+#$driverp->{waypoints_from_expected} = sub
 #    {
 #    my( $title, $route_ind, @patron_order ) = @_;
 #    my @ret;
 #    #debugout(__LINE__,"Waypoints_from_expected($route_ind) starting...");
 #    foreach my $ind ( @patron_order )
 #	{
-#	push( @ret, &{$DRIVER->{stop}}({
+#	push( @ret, &{$driverp->{stop}}({
 #	    ind		=>	$ind,
 #	    time	=>	time(),
 #	    status	=>	(&DBget($ind,"Status")||"No Status"),
@@ -198,7 +202,7 @@ $DRIVER->{tracks} = sub
 ##	Creates a KML file for the route specified.  Not necessarily	#
 ##	route driver actually took, but something to compare against.	#
 ##########################################################################
-#$DRIVER->{expected} = sub
+#$driverp->{expected} = sub
 #    {
 #    my( $route_ind,
 #	$distributor_ind,
@@ -211,14 +215,14 @@ $DRIVER->{tracks} = sub
 #	join("/",
 #	    $EXPECTED_DIR,
 #	    &cpi_filename::text_to_filename($distributor_name),
-#	    &cpi_filename::text_to_filename($route_name).".".$DRIVER->{extension} ),
-#	&cpi_template::template( $DRIVER->{template},
+#	    &cpi_filename::text_to_filename($route_name).".".$driverp->{extension} ),
+#	&cpi_template::template( $driverp->{template},
 #	    "%%TITLE%%", $title,
-#	    "%%COLORS%%", &{$DRIVER->{generate_colors}}(),
+#	    "%%COLORS%%", &{$driverp->{generate_colors}}(),
 #	    "%%ACTUAL_DATA%%",
 #		join("",
-#		    &{$DRIVER->{tracks}}( $title, "red", @rt_coords ),
-#		    &{$DRIVER->{waypoints_from_expected}}( $title, $route_ind, @order)))
+#		    &{$driverp->{tracks}}( $title, "red", @rt_coords ),
+#		    &{$driverp->{waypoints_from_expected}}( $title, $route_ind, @order)))
 #	);
 #    };
 

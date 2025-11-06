@@ -8,37 +8,42 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
+
+use strict;
+
 package main;
+use lib "/usr/local/lib/perl";
+use cpi_drivers qw( get_drivers device_debug get_driver );
 
-my $DRIVER={};
-#$DRIVER->{KEY}			= 'Key should be in the database';
-$DRIVER->{minmaps}		= 1;
-$DRIVER->{maxmaps}		= 100;
-$DRIVER->{STATICURL}		= "https://www.mapquestapi.com/staticmap/v5/map";
-$DRIVER->{SHAPE_PARMS}		= "fill:ffffff88|width:7mi|weight:4";
+my $driverp = &get_driver(__FILE__);
 
-$DRIVER->{PRECISION}		= 5;
-@{$DRIVER->{BOUNDS_ORDER}}	= ("maxlat","maxlng","minlat","minlng");
-$DRIVER->{destext}		= "html";
-$DRIVER->{mime}			= "text/html";
-$DRIVER->{tobrowser}		= 1;
-$DRIVER->{name}			= "Mapquest browser map";
-$DRIVER->{URL}			= "http://www.mapquestapi.com/directions/v2";
-$DRIVER->{MQAPI}		= "https://www.mapquestapi.com";
-$DRIVER->{STATIC}		= "$DRIVER->{MQAPI}/staticmap/v5/map";
-$DRIVER->{GEOCODING_URL}	= "$DRIVER->{MQAPI}/geocoding/v1/batch";
-$DRIVER->{ROUTEMATRIX_URL}	= "$DRIVER->{MQAPI}/directions/v2/routematrix";
-$DRIVER->{ROUTING_URL}		= "$DRIVER->{URL}/optimizedroute";
-$DRIVER->{SHAPE_URL}		= "$DRIVER->{URL}/routeshape";
-$DRIVER->{V1_ADDR}		= "country/state/town/street";
-$DRIVER->{V2_ADDR}		= "street,town,state";
+#$driverp->{KEY}		= 'Key should be in the database';
+$driverp->{minmaps}		= 1;
+$driverp->{maxmaps}		= 100;
+$driverp->{STATICURL}		= "https://www.mapquestapi.com/staticmap/v5/map";
+$driverp->{SHAPE_PARMS}		= "fill:ffffff88|width:7mi|weight:4";
 
+$driverp->{PRECISION}		= 5;
+@{$driverp->{BOUNDS_ORDER}}	= ("maxlat","maxlng","minlat","minlng");
+$driverp->{destext}		= "html";
+$driverp->{mime}		= "text/html";
+$driverp->{tobrowser}		= 1;
+$driverp->{name}		= "Mapquest browser map";
+$driverp->{URL}			= "http://www.mapquestapi.com/directions/v2";
+$driverp->{MQAPI}		= "https://www.mapquestapi.com";
+$driverp->{STATIC}		= "$driverp->{MQAPI}/staticmap/v5/map";
+$driverp->{GEOCODING_URL}	= "$driverp->{MQAPI}/geocoding/v1/batch";
+$driverp->{ROUTEMATRIX_URL}	= "$driverp->{MQAPI}/directions/v2/routematrix";
+$driverp->{ROUTING_URL}		= "$driverp->{URL}/optimizedroute";
+$driverp->{SHAPE_URL}		= "$driverp->{URL}/routeshape";
+$driverp->{V1_ADDR}		= "country/state/town/street";
+$driverp->{V2_ADDR}		= "street,town,state";
 
 #########################################################################
 # Stolen directly (though re-indented) from				#
 # https://developer.mapquest.com/documentation/common/encode-decode/	#
 #########################################################################
-$DRIVER->{decompress} = sub
+$driverp->{decompress} = sub
     {
     my($precision,$encoded_str) = @_;
     my @encoded = split(//,$encoded_str);
@@ -66,7 +71,7 @@ $DRIVER->{decompress} = sub
 #########################################################################
 #	Compress a series of points into a string.			#
 #########################################################################
-$DRIVER->{compress} = sub
+$driverp->{compress} = sub
     {
     my($precision,@points) = @_;
     #$precision_multiplier = Math.pow(10, $precision);
@@ -80,7 +85,7 @@ $DRIVER->{compress} = sub
 	my $latlong = int( $point * $precision_multiplier );
 
 	## Encode the differences between the points
-	push( @encoded, &{$DRIVER->{encode_number}}($latlong - $last_latlong[$latlong_ind]) );
+	push( @encoded, &{$driverp->{encode_number}}($latlong - $last_latlong[$latlong_ind]) );
 
 	## Update our concept of last latitude or longitude
 	$last_latlong[$latlong_ind] = $latlong;
@@ -92,7 +97,7 @@ $DRIVER->{compress} = sub
 #########################################################################
 #	Return a string that is an encoded version of the number.	#
 #########################################################################
-$DRIVER->{encode_number} = sub
+$driverp->{encode_number} = sub
     {
     my($num) = @_;
     #$num = $num << 1;
@@ -112,11 +117,11 @@ $DRIVER->{encode_number} = sub
 #########################################################################
 #	Unused testing							#
 #########################################################################
-$DRIVER->{test_compress} = sub
+$driverp->{test_compress} = sub
     {
-    my $s = &{$DRIVER->{compress}}
+    my $s = &{$driverp->{compress}}
 	(
-	$DRIVER->{PRECISION},
+	$driverp->{PRECISION},
 	45.967, -83.928700032549,
 	55, -83.928420000,
 	35, -83.97948699748273,
@@ -130,17 +135,17 @@ $DRIVER->{test_compress} = sub
 	35.00000, -83.00000,
 	35.000004190, -83.00000123490,
 	);
-    my @points = &{$DRIVER->{decompress}}( $DRIVER->{PRECISION}, $s );
+    my @points = &{$driverp->{decompress}}( $driverp->{PRECISION}, $s );
     print $s, " =>\n[", join(",",@points), "]\n";
     };
 
 #########################################################################
 #	Return trkpt string from progress GPS list.			#
 #########################################################################
-$DRIVER->{progress_to_tracks} = sub
+$driverp->{progress_to_tracks} = sub
     {
     my( $title, $input_p ) = @_;
-    return &{$DRIVER->{tracks}}(
+    return &{$driverp->{tracks}}(
 	$title,
 	( $input_p->{color} || ( $input_p->{done} ? "blue" : "green" ) ),
 	@{$input_p->{progress_p}} );
@@ -149,7 +154,7 @@ $DRIVER->{progress_to_tracks} = sub
 #########################################################################
 #	Add the stops to the event_list as waypoints			#
 #########################################################################
-$DRIVER->{stops_to_waypoints} = sub
+$driverp->{stops_to_waypoints} = sub
     {
     my( $title, $input_p )			= @_;
     my($sec,$min,$hour,$mday,$month,$year)	= localtime($main::now);
@@ -164,7 +169,7 @@ $DRIVER->{stops_to_waypoints} = sub
 	if ( $stop->{when} && $stop->{when} =~ /(\d+):(\d+)/ )
 	    { $hour=$1; $min=$2; }
 	my( $ind, @others ) = split( /,/, $stop->{patrons} );
-	push( @ret, &{$DRIVER->{stop}}({
+	push( @ret, &{$driverp->{stop}}({
 	    ind		=>	$ind,
 	    time	=>	timelocal(0,$min,$hour,$mday,$month,$year),
 	    status	=>	($stop->{status}||""),
@@ -181,7 +186,7 @@ $DRIVER->{stops_to_waypoints} = sub
 #	time, latitude and longitude.  Only want array of 2-member	#
 #	arrays.								#
 #########################################################################
-$DRIVER->{just_latlng} = sub
+$driverp->{just_latlng} = sub
     {
     my( $input_p ) = @_;
     return map{($_->{lat},$_->{lng})} @{$input_p->{progress_p}};
@@ -190,7 +195,7 @@ $DRIVER->{just_latlng} = sub
 #########################################################################
 #	Return a string with an encoded JPEG file.			#
 #########################################################################
-$DRIVER->{progress_to_pic} = sub
+$driverp->{progress_to_pic} = sub
     {
     my( $base, $bounds, $compressed_string, $uncompressed_string ) = @_;
 #    print "CMC progress_to_pic, base=$base bounds=",$bounds,
@@ -198,17 +203,17 @@ $DRIVER->{progress_to_pic} = sub
     my $res = &cpi_cache::cache({
 	query=>"$main::CACHEDIR/$base.txt",
 	result=>"$main::CACHEDIR/$base.b64",
-	http=>$DRIVER->{STATICURL},
+	http=>$driverp->{STATICURL},
 	method=>"POST",
 	args=>
 	    [
-	    "key=$DRIVER->{KEY}",
+	    "key=$driverp->{KEY}",
 	    "type=map",
 	    "imagetype=jpeg",
 	    "declutter=false",
 	    "traffic=4",
-	    #"shapeformat=cmp","shape=".$DRIVER->{SHAPE_PARMS}."|cmp|enc:$compressed_string",
-	    "shape=".$DRIVER->{SHAPE_PARMS}."|$uncompressed_string",
+	    #"shapeformat=cmp","shape=".$driverp->{SHAPE_PARMS}."|cmp|enc:$compressed_string",
+	    "shape=".$driverp->{SHAPE_PARMS}."|$uncompressed_string",
 	    "boundingBox=$bounds",
 	    "size=\@2x" ]
 	} );
@@ -219,12 +224,12 @@ $DRIVER->{progress_to_pic} = sub
 #########################################################################
 #	Return a mq file from the GPS list and the various stops.	#
 #########################################################################
-$DRIVER->{progress} = sub
+$driverp->{progress} = sub
     {
     my( $title, @input_ps ) = @_;
 
     print STDERR "order_query progress = $input_ps[0]->{distributor} .\n";
-    $DRIVER->{KEY} = &DBget( $input_ps[0]->{distributor}, "Mapquest_key" );
+    $driverp->{KEY} = &main::DBget( $input_ps[0]->{distributor}, "Mapquest_key" );
 
     my @routes;
     foreach my $input_p ( @input_ps )
@@ -243,20 +248,20 @@ $DRIVER->{progress} = sub
 	push( @routes, \%route_info );
 	}
 
-    return &cpi_template::template( $DRIVER->{template},
+    return &cpi_template::template( $driverp->{template},
 	"%%TITLE%%",		$title||"UNDEF",
-	"%%RRGGBB_COLORS%%",	encode_json( [ &colors_by("rrggbb") ] ),
-	"%%NAME_COLORS%%",	encode_json( [ &colors_by("Name") ] ),
+	"%%RRGGBB_COLORS%%",	encode_json( [ &main::colors_by("rrggbb") ] ),
+	"%%NAME_COLORS%%",	encode_json( [ &main::colors_by("Name") ] ),
         "%%STATUS_STYLES%%",	encode_json( \%main::STATUS_STYLES ),
 	'%%ROUTES%%',		encode_json( \@routes ),
-	'%%MAPQUEST_KEY%%',	$DRIVER->{KEY}
+	'%%MAPQUEST_KEY%%',	$driverp->{KEY}
 	);
     };
 
 #########################################################################
 #	Returns mqeese text for a stop but takes times, stati & note.	#
 #########################################################################
-$DRIVER->{stop} = sub
+$driverp->{stop} = sub
     {
     my( $stop_argp )		= @_;
     my $ind			= $stop_argp->{ind};
@@ -265,22 +270,22 @@ $DRIVER->{stop} = sub
     $global_time_str =~ s/T/ /g;
     $global_time_str =~ s/\.\d\d\d[A-Z]$//g;
 
-    my $addrtxt = &DBget($ind,"Address");
+    my $addrtxt = &main::DBget($ind,"Address");
     if( $addrtxt )
 	{ $addrtxt =~ s+^(.*?),(.*)+<nobr>$1</nobr><br>$2+; }
     else
 	{ $addrtxt = "No address"; }
 
-    my( $lat, $lon )		= split(/,/, (&DBget($ind,"Coords")||"UNDEF") );
+    my( $lat, $lon )		= split(/,/, (&main::DBget($ind,"Coords")||"UNDEF") );
 
     my $status = ($stop_argp->{status}||"No Status");
     my $status_style = $main::STATUS_STYLES{$status} || "";
     return join("",
     	"<tr style='$status_style'>\n",
-    	"<th valign=top align=left>",(&DBget($ind,"Name")||"UNDEF"),"</th>\n",
+    	"<th valign=top align=left>",(&main::DBget($ind,"Name")||"UNDEF"),"</th>\n",
     	"<td valign=top>$global_time_str</td>\n",
     	"<td valign=top>",
-    	( ($_=&DBget($ind,"Phone"))
+    	( ($_=&main::DBget($ind,"Phone"))
 	    ? "<nobr><a href='tel:$_'><nobr>$_</a></nobr>"
 	    : "No phone" ), "</td>\n",
     	"<td valign=top>",
@@ -294,7 +299,7 @@ $DRIVER->{stop} = sub
 
 #########################################################################
 #########################################################################
-$DRIVER->{tracks} = sub
+$driverp->{tracks} = sub
     {
     my( $title, $linecolor, @coordlist ) = @_;
     return
@@ -328,18 +333,18 @@ $DRIVER->{tracks} = sub
 ##########################################################################
 ##	Creates a Mapquest pieces for each waypoint in expected route.	#
 ##########################################################################
-#$DRIVER->{waypoints_from_expected} = sub
+#$driverp->{waypoints_from_expected} = sub
 #    {
 #    my( $title, $route_ind, @patron_order ) = @_;
 #    print "CMC waypoints_from_expected.\n";
 #    my @ret = ( "<table border=1>" );
 #    foreach my $ind ( @patron_order )
 #	{
-#	push( @ret, &{$DRIVER->{stop}}({
+#	push( @ret, &{$driverp->{stop}}({
 #	    ind		=>	$ind,
 #	    time	=>	time(),
-#	    status	=>	(&DBget($ind,"Status")||"No Status"),
-#	    note	=>	(&DBget($ind,"Last_note")||"")
+#	    status	=>	(&main::DBget($ind,"Status")||"No Status"),
+#	    note	=>	(&main::DBget($ind,"Last_note")||"")
 #	    }) );
 #	}
 #    push( @ret, "</table>\n" );
@@ -351,7 +356,7 @@ $DRIVER->{tracks} = sub
 ##	necessarily route driver actually took, but something to	#
 ##	compare against.						#
 ##########################################################################
-#$DRIVER->{expected} = sub
+#$driverp->{expected} = sub
 #    {
 #    my( $route_ind,
 #	$distributor_ind,
@@ -364,16 +369,16 @@ $DRIVER->{tracks} = sub
 #	join("/",
 #	    $EXPECTED_DIR,
 #	    &cpi_filename::text_to_filename($distributor_name),
-#	    &cpi_filename::text_to_filename($route_name).".".$DRIVER->{extension} ),
-#	&cpi_template::template( $DRIVER->{template},
+#	    &cpi_filename::text_to_filename($route_name).".".$driverp->{extension} ),
+#	&cpi_template::template( $driverp->{template},
 #	    "%%TITLE%%", $title,
 #	    "%%STATUS_STYLES%%", encode_json( \%main::STATUS_STYLES ),
-#	    "%%RRGGBB_COLORS%%", encode_json( [ &colors_by("rrggbb") ] ),
-#	    "%%NAME_COLORS%%", encode_json( [ &colors_by("Name") ] ),
+#	    "%%RRGGBB_COLORS%%", encode_json( [ &main::colors_by("rrggbb") ] ),
+#	    "%%NAME_COLORS%%", encode_json( [ &main::colors_by("Name") ] ),
 #	    "%%ACTUAL_DATA%%",
 #		join("",
-#		    &{$DRIVER->{tracks}}( $title, "red", @main::rt_coords ),
-#		    &{$DRIVER->{waypoints_from_expected}}( $title, $route_ind, @order)))
+#		    &{$driverp->{tracks}}( $title, "red", @main::rt_coords ),
+#		    &{$driverp->{waypoints_from_expected}}( $title, $route_ind, @order)))
 #	);
 #    };
 
@@ -388,7 +393,7 @@ $DRIVER->{tracks} = sub
 #	Cute way of mapping routing standard address to different	#
 #	Mapquest standards.						#
 #########################################################################
-$DRIVER->{remapper} = sub
+$driverp->{remapper} = sub
     {
     my( $addr, $fmt ) = @_;
     my $res = $addr;
@@ -414,18 +419,18 @@ $DRIVER->{remapper} = sub
 #########################################################################
 #	Generate a URL to Mapquest maps from a route.			#
 #########################################################################
-$DRIVER->{route_to_url} = sub
+$driverp->{route_to_url} = sub
     {
     my( $map_start, $map_end, @loc_list ) = @_;
     my @res = ( "https://www.mapquest.com/directions" );
     #push( @res, "/from/near-$map_start" ) if( $map_start );
     #push( @res, ( map { "/to/near-$_" } ( @loc_list, $map_end ) ) );
     push( @res,
-	"/from/".&{$DRIVER->{remapper}}($map_start,$DRIVER->{V1_ADDR}) )
+	"/from/".&{$driverp->{remapper}}($map_start,$driverp->{V1_ADDR}) )
 	if( $map_start );
     push( @res,
 	( map
-	    { "/to/".&{$DRIVER->{remapper}}($_,$DRIVER->{V1_ADDR}) }
+	    { "/to/".&{$driverp->{remapper}}($_,$driverp->{V1_ADDR}) }
 	    ( @loc_list, $map_end )
 	) );
     return join("",@res);
@@ -434,13 +439,13 @@ $DRIVER->{route_to_url} = sub
 #########################################################################
 #	Try to print a useful mapquest error message.
 #########################################################################
-$DRIVER->{fatal} = sub
+$driverp->{fatal} = sub
     {
     my ( $msg, $mq_res ) = @_;
-    &cpi_file::fatal("Mapquest failure for $msg, with no results") if( ! $mq_res );
-    &cpi_file::fatal("Mapquest failure for $msg with no useful failure diagnostics")
+    &cpi_file::autopsy("Mapquest failure for $msg, with no results") if( ! $mq_res );
+    &cpi_file::autopsy("Mapquest failure for $msg with no useful failure diagnostics")
 	if( ! $mq_res->{info} || ! $mq_res->{info}{messages} );
-    &cpi_file::fatal("Mapquest failure for $msg with:".join("\n",@{$mq_res->{info}{messages}}) );
+    &cpi_file::autopsy("Mapquest failure for $msg with:".join("\n",@{$mq_res->{info}{messages}}) );
     };
 
 #########################################################################
@@ -448,13 +453,13 @@ $DRIVER->{fatal} = sub
 #	If file exists, it is the cached results, use those.  Else,	#
 #	actually run the query and put results in the cache.		#
 #########################################################################
-$DRIVER->{order_query} = sub
+$driverp->{order_query} = sub
     {
     my( @stoplist ) = @_;
 
     print STDERR "order_query distributor = $main::current_distributor .\n";
-    $DRIVER->{KEY} = &DBget( $main::current_distributor, "Mapquest_key" );
-    print STDERR "k=$DRIVER->{KEY}.\n";
+    $driverp->{KEY} = &main::DBget( $main::current_distributor, "Mapquest_key" );
+    print STDERR "k=$driverp->{KEY}.\n";
 
     my @mapquest_locations;
     #my @debug_list;
@@ -464,9 +469,9 @@ $DRIVER->{order_query} = sub
 	my $locstr =
 	    ( $main::stop{$stopind}{coords}
 	    ?	$main::stop{$stopind}{coords}
-	    :	&{$DRIVER->{remapper}}(
+	    :	&{$driverp->{remapper}}(
 	    	    $main::stop{$stopind}{address},
-		    $DRIVER->{V2_ADDR} ) );
+		    $driverp->{V2_ADDR} ) );
 	push( @mapquest_locations, $locstr );
 	#push( @debug_list, $main::stop{$stopind}{name_string} . ": " . $locstr );
 	}
@@ -487,17 +492,17 @@ $DRIVER->{order_query} = sub
 	    ) . "}";
     &cpi_file::write_file( $cpi_vars::CACHEDIR."/JSON.json", $jsonpart );
 
-    &cpi_file::fatal("No route defined.  Dying.") if( ! $main::current_route );
+    &cpi_file::autopsy("No route defined.  Dying.") if( ! $main::current_route );
 
     my $mqorp = &http_json(
 	&cpi_filename::text_to_filename($main::current_route).".%s.ord",
-	"$DRIVER->{ROUTING_URL}?key=$DRIVER->{KEY}",
+	"$driverp->{ROUTING_URL}?key=$driverp->{KEY}",
 	$jsonpart
 	);
 
-    &{$DRIVER->{fatal}}("obtaining route",$mqorp)
+    &{$driverp->{fatal}}("obtaining route",$mqorp)
 	if( ! $mqorp || ! $mqorp->{route} );
-    &{$DRIVER->{fatal}}("obtaining locationSequence",$mqorp)
+    &{$driverp->{fatal}}("obtaining locationSequence",$mqorp)
 	if( ! $mqorp->{route}{locationSequence} );
     my @sequence = @{$mqorp->{route}{locationSequence} };
 
@@ -518,16 +523,16 @@ $DRIVER->{order_query} = sub
 	my $lp = $mqorp->{route}{legs}[$i];
         foreach my $patron_ind ( @{ $main::stop{$stop_name}{patrons} } )
 	    {
-	    if( ! &DBget( $patron_ind, "Coords" ) )
+	    if( ! &main::DBget( $patron_ind, "Coords" ) )
 		{
 		&DBwrite() if( ! $update_patron_gps++ );
 		&DBput( $patron_ind, "Coords",
 		    $lp->{maneuvers}[0]{startPoint}{lat} . "," .
 		    $lp->{maneuvers}[0]{startPoint}{lng} );
 		print 
-		    "Setting <b>", &DBget($patron_ind,"Name"),
-		    "</b> at <b>", &DBget($patron_ind,"Address"),
-		    "</b> to <b>", &DBget($patron_ind,"Coords"),
+		    "Setting <b>", &main::DBget($patron_ind,"Name"),
+		    "</b> at <b>", &main::DBget($patron_ind,"Address"),
+		    "</b> to <b>", &main::DBget($patron_ind,"Coords"),
 		    "</b>.<br>\n";
 		}
 	    }
@@ -538,9 +543,9 @@ $DRIVER->{order_query} = sub
 
     my $mqshp = &http_json(
 	&cpi_filename::text_to_filename($main::current_route).".%s.gps",
-	"$DRIVER->{SHAPE_URL}?key=$DRIVER->{KEY}&sessionId=".$mqorp->{route}{sessionId}."&fullShape=true");
+	"$driverp->{SHAPE_URL}?key=$driverp->{KEY}&sessionId=".$mqorp->{route}{sessionId}."&fullShape=true");
 
-    &{$DRIVER->{fatal}}("obtaining route",$mqorp)
+    &{$driverp->{fatal}}("obtaining route",$mqorp)
 	if( ! $mqorp || ! $mqorp->{route} );
 
     my @mq_coords = @{$mqshp->{route}{shape}{shapePoints}};
@@ -553,7 +558,7 @@ $DRIVER->{order_query} = sub
 #########################################################################
 #	Actual geocoding interface to mapquest.				#
 #########################################################################
-$DRIVER->{geocode_batch} = sub
+$driverp->{geocode_batch} = sub
     {
     my( @addresses ) = @_;
     my @ret;
@@ -567,13 +572,13 @@ $DRIVER->{geocode_batch} = sub
 		ignoreLatLngInput	=>	"false"
 		}
 	} );
-    &cpi_file::fatal("Refusing to geocode:  " . join("; ",@addresses));
+    &cpi_file::autopsy("Refusing to geocode:  " . join("; ",@addresses));
     my $mq_geocode_res = &http_json(
 	"batched_geocodes",
-	"$DRIVER->{GEOCODING_URL}?key=$DRIVER->{KEY}",
+	"$driverp->{GEOCODING_URL}?key=$driverp->{KEY}",
 	$jsonpart
 	);
-    &{$DRIVER->{fatal}}("obtaining geocoding",$mq_geocode_res)
+    &{$driverp->{fatal}}("obtaining geocoding",$mq_geocode_res)
         if( ! $mq_geocode_res || ! $mq_geocode_res->{results} );
     for( my $addrind=0; $addrind<scalar(@addresses); $addrind++ )
 	{
@@ -591,7 +596,7 @@ $DRIVER->{geocode_batch} = sub
 #	and any of the coordinates.					#
 #########################################################################
 our $cost_origin;
-$DRIVER->{costs_batch} = sub
+$driverp->{costs_batch} = sub
     {
     my( @coords ) = @_;
     my @ret;
@@ -602,22 +607,22 @@ $DRIVER->{costs_batch} = sub
 	locations	=>	[ $cost_origin, @coords ]
 	} );
     #print "jsonpart=[$jsonpart]\n";
-    #&cpi_file::fatal("Refusing to batch costs:  ". join("; ",$cost_origin,@coords) );
+    #&cpi_file::autopsy("Refusing to batch costs:  ". join("; ",$cost_origin,@coords) );
     print "Costing [ $cost_origin and ", join(" ",@coords), "]<br>\n";
     my $mq_costs_res = &http_json(
 	"batched_costs",
-	"$DRIVER->{ROUTEMATRIX_URL}?key=$DRIVER->{KEY}",
+	"$driverp->{ROUTEMATRIX_URL}?key=$driverp->{KEY}",
 	$jsonpart
 	);
     #print "Post call...<br>\n";
-    &{$DRIVER->{fatal}}("obtaining cost matrix",$mq_costs_res)
+    &{$driverp->{fatal}}("obtaining cost matrix",$mq_costs_res)
         if( ! $mq_costs_res || ! $mq_costs_res->{distance} );
     #print "Post error check...<br>\n";
     for( my $coordind=0; $coordind < scalar(@coords); $coordind++ )
         {
 	my $d = $mq_costs_res->{distance}[$coordind+1];
 	my $t = $mq_costs_res->{time}[$coordind+1];
-	&cpi_file::fatal("undef coords[$coordind]=$coords[$coordind]]")
+	&cpi_file::autopsy("undef coords[$coordind]=$coords[$coordind]]")
 	    if( !defined($t) || !defined($d) );
 	#print "d($coords[$coordind]) = $d.  t=$t.<br>\n";
 	print "d=0 at coords[$coordind]=$coords[$coordind].<br>\n"
@@ -632,19 +637,19 @@ $DRIVER->{costs_batch} = sub
 #	expected list.  We do this because the expected route will be	#
 #	created by the javascript.					#
 #########################################################################
-$DRIVER->{expected} = sub
+$driverp->{expected} = sub
     {
     };
 
 #########################################################################
 #	Return the javascript with any substitutions.			#
 #########################################################################
-$DRIVER->{js} = sub
+$driverp->{js} = sub
     {
     my( $dist ) = @_;
-    $DRIVER->{KEY} = &DBget( $dist, "Mapquest_key" );
-    return &cpi_template::template( $DRIVER->{dir}."/lib.js",
-        "%%MAPQUEST_KEY%%", $DRIVER->{KEY} );
+    $driverp->{KEY} = &main::DBget( $dist, "Mapquest_key" );
+    return &cpi_template::template( $driverp->{dir}."/lib.js",
+        "%%MAPQUEST_KEY%%", $driverp->{KEY} );
     };
 
 1;

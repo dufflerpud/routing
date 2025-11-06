@@ -2,13 +2,17 @@
 use strict;
 
 package main;
-my $DRIVER={};
-$DRIVER->{name} = "Apple route format";
+use lib "/usr/local/lib/perl";
+use cpi_drivers qw( get_drivers device_debug get_driver );
+
+my $driverp = &get_driver(__FILE__);
+
+$driverp->{name} = "Apple route format";
 
 #########################################################################
 #	Generate a URL to Apple maps from a route.			#
 #########################################################################
-$DRIVER->{route_to_url} = sub
+$driverp->{route_to_url} = sub
     {
     my( $map_start, $map_end, @loc_list ) = @_;
     my @res = ( "https://beta.maps.Apple.com/?dirflg=d" );
@@ -20,10 +24,10 @@ $DRIVER->{route_to_url} = sub
 #########################################################################
 #	Return the javascript with any substitutions.			#
 #########################################################################
-$DRIVER->{js} = sub
+$driverp->{js} = sub
     {
     my( $dist ) = @_;
-    return &cpi_template::template( $DRIVER->{dir}."/lib.js" );
+    return &cpi_template::template( $driverp->{dir}."/lib.js" );
     };
 
 1;

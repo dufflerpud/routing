@@ -8,22 +8,28 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
-package main;
 
-my $DRIVER={};
-$DRIVER->{name} = "GPX format";
-$DRIVER->{minmaps} = 1;
-$DRIVER->{maxmaps} = 100;
+use strict;
+
+package main;
+use lib "/usr/local/lib/perl";
+use cpi_drivers qw( get_drivers device_debug get_driver );
+
+my $driverp = &get_driver(__FILE__);
+
+$driverp->{name} = "GPX format";
+$driverp->{minmaps} = 1;
+$driverp->{maxmaps} = 100;
 
 our @MAPCOLORS;
 
 #########################################################################
 #########################################################################
-#$DRIVER->{expected} = sub
+#$driverp->{expected} = sub
 #    {
 #    my( $title, $input_p ) = @_;
 #    return &cpi_template::template(
-#        $DRIVER->{template},
+#        $driverp->{template},
 #        "%%CREATOR%%", ?
 #        "%%ACTUAL_DATA%%", ? );
 #    };
@@ -32,12 +38,12 @@ my @GPX_COLORS;
 #########################################################################
 #	Return trkpt string from progress GPS list.			#
 #########################################################################
-$DRIVER->{progress_to_trkpts} = sub
+$driverp->{progress_to_trkpts} = sub
     {
     my( $title, $input_p ) = @_;
     my @ret;
 
-    @GPX_COLORS = &colors_by("Name") if( ! @GPX_COLORS );
+    @GPX_COLORS = &main::colors_by("Name") if( ! @GPX_COLORS );
 
     # Add the GPS points to the event_list as trkpts
     foreach my $latlng_p ( $input_p->{progress_p}, $input_p->{expected_p} )
@@ -69,7 +75,7 @@ $DRIVER->{progress_to_trkpts} = sub
 #########################################################################
 #	Add the stops to the event_list as wpts				#
 #########################################################################
-$DRIVER->{stops_to_waypoints} = sub
+$driverp->{stops_to_waypoints} = sub
     {
     my( $title, $input_p ) = @_;
     my($sec,$min,$hour,$mday,$month,$year) = localtime($main::now);
@@ -118,7 +124,7 @@ $DRIVER->{stops_to_waypoints} = sub
 #########################################################################
 #	Return a GPX file from the GPS list and the various stops.	#
 #########################################################################
-$DRIVER->{progress} = sub
+$driverp->{progress} = sub
     {
     my( $title, @input_ps ) = @_;
 
@@ -127,12 +133,12 @@ $DRIVER->{progress} = sub
         {
 	push( @pieces,
 	    &indent(__LINE__,
-	    &{$DRIVER->{progress_to_trkpts}}( $input_p->{title}, $input_p ),
-	    &{$DRIVER->{stops_to_waypoints}}( $input_p->{title}, $input_p ) ) );
+	    &{$driverp->{progress_to_trkpts}}( $input_p->{title}, $input_p ),
+	    &{$driverp->{stops_to_waypoints}}( $input_p->{title}, $input_p ) ) );
 	}
 
     return &cpi_template::template(
-	$DRIVER->{template},
+	$driverp->{template},
 	"%%CREATOR%%", ucfirst( $cpi_vars::PROG ),
 	"%%ACTUAL_DATA%%", join("",@pieces) );
     };
