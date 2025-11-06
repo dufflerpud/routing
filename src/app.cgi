@@ -44,11 +44,14 @@ use cpi_inlist qw(inlist);
 use cpi_template qw(subst_list template);
 use cpi_send_file qw(sendmail);
 use cpi_english qw(nword plural);
-use cpi_db qw(dbadd dbdel dbdelkey dbget dbnewkey dbpop dbput dbread dbwrite);
-use cpi_file qw(autopsy cleanup fatal files_in read_file read_lines tempfile write_file);
+use cpi_db qw(dbadd dbdel dbdelkey dbget dbnewkey dbpop dbput dbread dbwrite
+ DBread DBwrite DBpop DBget DBput DBdelkey DBadd DBdel DBnewkey);
+use cpi_file qw(autopsy cleanup fatal files_in read_file read_lines
+ tempfile write_file echodo );
 use cpi_filename qw(filename_to_text text_to_filename);
 use cpi_time qw(time_string);
 use cpi_cgi qw(CGIheader note_to_html safe_html show_vars);
+use cpi_mime qw( mime_string );
 use cpi_vars;
 
 $cpi_vars::TABLE_TAGS	= "bgcolor=\"#c0c0d0\"";
@@ -96,6 +99,7 @@ my $ROUTINGJS 		= $LIB."/${cpi_vars::PROG}_header.js";
 my $ROUTEORDERJS	= $LIB."/${cpi_vars::PROG}_order.js";
 my $COLOR_MAP_FILE	= $LIB."/colors";
 my $MAPPER_DIR		= $SRC."/mappers";
+my $PORTING_DIR		= $SRC."/porting";
 
 our $FORMNAME		= "form";
 $cpi_vars::CACHEDIR 	= "$cpi_vars::BASEDIR/cache";
@@ -357,16 +361,13 @@ my %TABLE_FIELDS =
 		header		=> $HEADER_SPACE."Phone",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Preferred_hospital",
-		header		=> "Preferred hospital",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Maximum_patrons",
-		header		=> "Maximum patrons",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Weight_limit",
 		header		=> "Weight limit (kgs)",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Times_available",
-		header		=> "Times available",
 		handler		=> \&Field_Text } ]
 	},
     Route 	=>
@@ -390,7 +391,6 @@ my %TABLE_FIELDS =
 		db		=> "Staff",
 		count		=> 3 },
 	      {	Name		=> "Expires",
-	        header		=> "Expires",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Coordinator_note",
 		header		=> "Coordinator's note",
@@ -407,7 +407,19 @@ my %TABLE_FIELDS =
 		Searchable	=> 1,
 		handler		=> \&Field_SelectFromDb,
 		db		=> "Route",
-		count		=> 1 } ]
+		count		=> 1 },
+	      {	Name		=> "Route_starts_with",
+		Searchable	=> 0,
+		handler		=> \&Field_SelectFromDb,
+		db		=> "Patron",
+		app_ro		=> 1,
+		count		=> 5 },
+	      {	Name		=> "Route_ends_with",
+		Searchable	=> 0,
+		handler		=> \&Field_SelectFromDb,
+		db		=> "Patron",
+		app_ro		=> 1,
+		count		=> 5 } ]
 	},
     Patron 	=>
 	{
@@ -470,7 +482,6 @@ my %TABLE_FIELDS =
 	      { Name		=> "Dogs",
 		handler		=> \&Field_SelectFromList },
 	      {	Name		=> "Times_receiving",
-		header		=> "Times receiving",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Coordinator_note",
 	        header		=> "Coordinator's note",
@@ -487,7 +498,6 @@ my %TABLE_FIELDS =
 		Searchable	=> 1,
 		app_ro		=> "1",
 		anoninvisible	=> 1,
-		header		=> "Last seen",
 		handler		=> \&Field_Text },
 	      {	Name		=> "Last_seen_by",
 		Searchable	=> 1,
@@ -657,12 +667,14 @@ our @rt_coords;			# Array of {lat=>,lng=>} for expected route
 my $allow_reset_window		= $ALLOW_RESET_WINDOW;
 our $now			= time();
 
+my %porting;			# Used for sucking in & writing databases of other formats
+
 print STDERR "--- "
 	. &time_string("%04d-%02d-%02d %02d:%02d:%02d",$now)
 	. " pid=$$ ---\n";
-print STDERR join("\n    ","Form:",
-	map { "$_=[$cpi_vars::FORM{$_}]" } sort keys %cpi_vars::FORM ), "\n"
-	if( %cpi_vars::FORM );
+#print STDERR join("\n    ","Form:",
+#	map { "$_=[$cpi_vars::FORM{$_}]" } sort keys %cpi_vars::FORM ), "\n"
+#	if( %cpi_vars::FORM );
 
 #########################################################################
 #	Used by the common administrative functions.			#
@@ -733,19 +745,6 @@ sub check_if_app_needs_header
     #print "check_if_app_needs_header($cpi_vars::FORM{func}) = ",($res||0),".\n";
     return $res;
     }
-
-#########################################################################
-#	Avoid some typing.  Make prettier code.				#
-#########################################################################
-sub DBread	{ return &dbread	( $cpi_vars::DB	);	}
-sub DBwrite	{ return &dbwrite	( $cpi_vars::DB	);	}
-sub DBpop	{ return &dbpop		( $cpi_vars::DB	);	}
-sub DBget	{ return &dbget		( $cpi_vars::DB,@_);	}
-sub DBput	{ return &dbput		( $cpi_vars::DB,@_);	}
-sub DBdelkey	{ return &dbdelkey	( $cpi_vars::DB,@_);	}
-sub DBadd	{ return &dbadd		( $cpi_vars::DB,@_);	}
-sub DBdel	{ return &dbdel		( $cpi_vars::DB,@_);	}
-sub DBnewkey	{ return &dbnewkey	( $cpi_vars::DB,@_);	}
 
 #########################################################################
 #	Display the HTML file for the route, substituting as required.	#
@@ -1114,7 +1113,7 @@ sub select_list
     my(	$fp, $varval, @values ) = @_;
 
     my $fieldname	= $fp->{Name};
-    my $fieldhdr	= "XL(".( $fp->{header} || $fieldname ).")";
+    my $fieldhdr	= "XL(".( $fp->{header} || &filename_to_text($fieldname )).")";
     my $allownone	= $fp->{allownone} ;
     my $count		= ( $fp->{count} || 1 );
 
@@ -1570,7 +1569,6 @@ sub Field_Dispatch
 sub list_to_names
     {
     my( $ind, $fld ) = @_;
-    my $val = &DBget( $ind, $fld );
     my @ret;
     foreach my $pt ( split(/,\s*/,&DBget($ind,$fld)) )
 	{
@@ -1582,6 +1580,44 @@ sub list_to_names
 	    { push( @ret, &DBget($pt,"Name") ); }
 	}
     return @ret;
+    }
+
+#########################################################################
+#	Generate a select list for importing either Dist or Route	#
+#########################################################################
+sub import_list_select
+    {
+    my ( $tblname, $ind ) = @_;
+    %porting = &get_drivers( $PORTING_DIR ) if( ! %porting );
+    return join("",
+	"<select help='file_import' onchange='import_select_arg0=\"$here/import_patrons,$tblname,$ind,\"+this.value;this.selectedIndex=0;(document.getElementById(\"file_import_id\")).click();'>",
+	    "<option disabled selected>XL(Import patrons)</option>\n",
+	    "<option value=psf>XL(Pipe separated fields)</option>",
+	    ( map {"<option value=$_>$porting{$_}{name}</option>\n"}
+		grep( $porting{$_}{exporter}, keys %porting)
+	    ),
+	"</select>");
+    #return "import_list_select($distind,".($routeind||"UNDEF").")";
+    }
+
+#########################################################################
+#	Generate a select list for exporting either Dist or Route	#
+#########################################################################
+sub export_list_select
+    {
+    my ( $tblname, $ind ) = @_;
+    %porting = &get_drivers( $PORTING_DIR ) if( ! %porting );
+    return join("",
+	"<select help='file_export' onchange='submit_func(\"$here/export_with_custom_header,$tblname,$ind,\"+this.value);this.selectedIndex=0;'>",
+	    "<option disabled selected>XL(Export patrons)</option>\n",
+	    "<option value=psf>XL(Pipe separated fields to file)</option>",
+	    ( map {"<option value=$_>$porting{$_}{name}</option>\n"}
+		grep( $porting{$_}{exporter}, keys %porting)
+	    ),
+	    "<option value=pdf>XL(PDF)</option>",
+	    "<option value=html>XL(HTML)</option>",
+	"</select>");
+    #return "export_list_select($distind,".($routeind||"UNDEF").")";
     }
 
 #########################################################################
@@ -1678,7 +1714,7 @@ EOF
 	    "<tr help='field_$args{tbl}_$fieldname'>",
 	    "<th id=",$fp->{Name},"_label_id valign=top align=left",
 	    ( $answer_needed ? " style='color:red'" : "" ),
-	    ">XL(",$fp->{header}||$fp->{Name}, "):",
+	    ">XL(",$fp->{header}||&filename_to_text($fp->{Name}), "):",
 	    "</th><td>");
 
 	if( $show_ro )
@@ -1741,6 +1777,7 @@ EOF
 	push( @toprint, "<tr><th colspan=2>",
 	    ( $here !~ /\// ? ""
 	    : "<input type=button help='button_larr' class='no-print' onClick='submit_func(\"$here/Back\");' value='&larr;'>\n" ),
+	    "<input type=file help='file_Import' id=file_import_id name=file_contents onChange='submit_func(import_select_arg0);' style='display:none;'>\n",
 	    ( $could{update} ? "<input type=button help='button_Update_record' id='update_id' onClick='submit_func(\"$here/Update,$args{tbl},$args{ind}\");' $started_good value='XL(Update)'>\n"
 	    : $could{edit} ? "<input type=button help='button_Edit' onClick='submit_func(\"$here/Edit,$args{tbl},$args{ind}\");' value='XL(Edit)'>\n" : "" ),
 	    ( &i_can(__LINE__,"w",$args{tbl}) ? "<input type=button help='button_Delete' onClick='confirm(\"Are you sure?\") && submit_func(\"$here/Delete\");' value='XL(Delete)'>\n" : "" ),
@@ -1752,14 +1789,16 @@ EOF
 		( "<input type=button help='button_Download_invoices' onClick='submit_func(\"$here/invoices_with_custom_header,$args{tbl},$args{ind}\");' value='XL(Download invoices)'>\n" ) ),
 	    ( $args{tbl} ne "Distributor" ? () :
 		( "<input type=button disabled help='button_Rebalance' onClick='submit_func(\"$here/rebalance_routes,$args{tbl},$args{ind}\");' value='XL(Rebalance routes)'>\n",
-		"<input type=file help='file_Import' id=file_import_id name=file_contents onChange='submit_func(\"$here/import_distributor,$args{tbl},$args{ind}\");' style='display:none;'>\n",
-		"<input type=button help='file_Import' onclick='(document.getElementById(\"file_import_id\")).click();' value='XL(Import)'>\n",
-		"<input type=button help='file_export' onclick='submit_func(\"$here/export_with_custom_header,$args{tbl},$args{ind}\");' value='XL(Export)'>\n",
+		&import_list_select( $args{tbl}, $args{ind} ),
+		&export_list_select( $args{tbl}, $args{ind} ),
 		"<select help='select_print_data' onchange='submit_func(\"$here/new_record_sheet,$args{tbl},$args{ind},\"+this.value);this.selectedIndex=0;'>",
 		    "<option disabled selected>XL(Print)</option>\n",
 		    "<option value=Staff>XL(Staff sheet)</option>\n",
 		    "<option value=Patron>XL(Patron sheet)</option>\n",
 		"<select>" ) ),
+	    ( $args{tbl} ne "Route" ? () :
+	    	( &import_list_select( $args{tbl}, $args{ind} ),
+		&export_list_select( $args{tbl}, $args{ind} ) ) ),
 	    ( $args{tbl} eq "Patron" ? () :
 		( "<input type=button help='button_Route_runs' onClick='submit_func(\"$here/list_route_runs,$args{tbl},$args{ind}\");' value='XL(List route runs)'>\n" ) ),
 	    "</th></tr>\n",
@@ -2015,8 +2054,9 @@ sub costs_batch
 sub order_query
     {
     &setup_mappers_list();
-    my @res =
-	&{ $mappers{$DEFAULT_ROUTER}{order_query} }( @_ );
+    print STDERR "DEFAULT_ROUTER=$DEFAULT_ROUTER, mappers=::", &Dumper(\%mappers), "::\nfq_drivers=::",
+        &Dumper( \%cpi_drivers::fq_drivers ), "::\n";
+    my @res = &{ $mappers{$DEFAULT_ROUTER}{order_query} }( @_ );
     return @res;
     }
 
@@ -2332,7 +2372,7 @@ sub get_patron_order
 	}
     my @stoplist = &make_stop_list();
 
-    if( !($_=&DBget($route_ind,"Order")) )
+    if( !($_=&db_to_order_string($route_ind) ) )
         { return &optimize_order(@stoplist); }
     else
     	{
@@ -2751,7 +2791,7 @@ sub patron_from_route
     }
 
 #########################################################################
-#	Return a list of all the users on a particular route.		#
+#	Return a list of all the patrons on the specified route.	#
 #########################################################################
 sub patrons_on
     {
@@ -2763,9 +2803,22 @@ sub patrons_on
     }
 
 #########################################################################
+#	Return a list of ll the patrons belonging to a distributor.	#
+#########################################################################
+sub patrons_of_distributor
+    {
+    my( $distind ) = @_;
+    my @ret =
+        grep( &DBget($_,"Status") eq "Active" && &DBget($_,"Distributor") eq $distind,
+	    &DBget("Patron") );
+    return @ret;
+    }
+
+#########################################################################
 #	Return the database index of something with the supplied name.	#
-#	Third argument is a flag with what to return if failed.	#
-#	Undefined causes fatal error.					#
+#	If not found and 3rd argument is undefined, have a fatal error.	#
+#	If argument is not "", return that value.			#
+#	If argument is "", add to the table.				#
 #########################################################################
 sub map_name_to_ind
     {
@@ -2774,8 +2827,17 @@ sub map_name_to_ind
 	{
 	return $ind if( $ind eq $name || &DBget($ind,"Name") eq $name );
 	}
-    return $retval if( defined($retval) );
-    &autopsy("Cannot map $name to an index in the $table table.");
+    if( ! defined( $retval ) )
+        {
+	&autopsy("Cannot map ".($name||"UNDEF")
+	    ." to an index in the $table table.");
+	}
+    if( $retval eq "" )
+	{
+	&DBadd( $table, $retval=&new_tagged_key( $table ) );
+	&DBput( $retval, "Name", $name );
+	}
+    return $retval;
     }
 
 #########################################################################
@@ -3577,6 +3639,9 @@ sub sort_patron
     {
     my( $ind ) = @_;
     my( @name_parts ) = split(/\s+/,&DBget($ind,"Name"));
+#    print STDERR "ind=[$ind] status=",
+#        (&DBget($ind,"Status")||"UNDEF"),
+#	" name_parts=[",join(",",@name_parts),"]\n";
     return join(", ",&DBget($ind,"Status"),pop(@name_parts),join(" ",@name_parts));
     }
 
@@ -3757,7 +3822,7 @@ EOF
     foreach my $fp ( @fields )
 	{
 	my $fname = $fp->{Name};
-	my $fheader = "XL(" . ( $fp->{header} || $fp->{Name} ) . ")";
+	my $fheader = "XL(" . ( $fp->{header} || &filename_to_text($fp->{Name}) ) . ")";
 	my $fv = ( $cpi_vars::FORM{"S_$fname"} || "" );
 	push( @toprint,
 	    "<th valign=top",
@@ -4064,8 +4129,8 @@ sub interactive_handler
 	{ &list_route_runs($tbl,$ind,@rest); }
     elsif( $fnc eq "rebalance_routes" )
 	{ &rebalance_routes($tbl,$ind,@rest); }
-    elsif( $fnc eq "import_distributor" )
-	{ &import_distributor($tbl,$ind,@rest); }
+    elsif( $fnc eq "import_patrons" )
+	{ &interactive_handler( &import_patrons($tbl,$ind,@rest), @so_far ); }
     elsif( $fnc eq "export_with_custom_header" )
 	{ &export_with_custom_header($tbl,$ind,@rest); }
     elsif( $fnc eq "new_record_sheet" )
@@ -4427,10 +4492,11 @@ EOF
 #########################################################################
 sub get_route_ranges
     {
-    my( $order_string, $route_ind ) = @_;
+    my( $route_ind ) = @_;
     my $distributor_ind = &DBget( $route_ind, "Distributor" );
     my @patrons_to_route = &patrons_on( $route_ind );
     my @patron_ranges = ();
+    my $order_string = &db_to_order_string( $route_ind );
     $current_route = &DBget( $route_ind, "Name" );
     if( ! $order_string )
 	{
@@ -4475,6 +4541,38 @@ sub get_route_ranges
     }
 
 #########################################################################
+#	Convert from database id to form we use with javascript.	#
+#########################################################################
+sub db_to_order_string
+    {
+    my( $route_ind ) = @_;
+    my $ret = join(":",
+    	&DBget( $route_ind, "Route_starts_with" )||"",
+	"",
+    	&DBget( $route_ind, "Route_ends_with" )||"" );
+    print STDERR "db_to_order_string($route_ind) returns [$ret]\n";
+    return $ret;
+    }
+
+#########################################################################
+#	Convert from javascript to form we can put in the database.	#
+#########################################################################
+sub order_string_to_db
+    {
+    my( $route_ind, $order_string ) = @_;
+    if( $order_string && $order_string =~ /(.*):(.*):(.*)/ )
+        {
+	&DBput( $route_ind, "Route_starts_with", $1 );
+	&DBput( $route_ind, "Route_ends_with", $3 );
+	}
+    else
+        {
+	&DBput( $route_ind, "Route_starts_with", undef );
+	&DBput( $route_ind, "Route_ends_with", undef );
+	}
+    }
+
+#########################################################################
 #	Put up a page with the current route and allow him to set the	#
 #	order.								#
 #########################################################################
@@ -4488,17 +4586,17 @@ sub modify_route_order
 	my $route_ind = $2;
 	my $route_name = &DBget($route_ind,"Name");
 	my @patron_ranges;
-	my $order_string = &DBget($route_ind,"Order");
+	my $order_string = &db_to_order_string($route_ind);
 	$current_distributor = &DBget($route_ind,"Distributor");
 	my @patrons_to_route = ( $current_distributor, &patrons_on( $route_ind ) );
 	&setup_stops( $route_ind, @patrons_to_route );
 	if( $fnc eq "update" )
 	    {
 	    &DBwrite();
-	    &DBput($route_ind,"Order",$order_string=$cpi_vars::FORM{route_order});
+	    &order_string_to_db( $route_ind, $order_string=$cpi_vars::FORM{route_order} );
 	    &DBpop();
 	    }
-	@patron_ranges = &get_route_ranges( $order_string, $route_ind );
+	@patron_ranges = &get_route_ranges( $route_ind );
 	my %patron_texts
 	    = map { ($_, "<th align=left>".&DBget($_,"Name")."</th><td>".&DBget($_,"Address")."</td>") }
 	    	@patrons_to_route;
@@ -4976,7 +5074,7 @@ sub pomap
 	    else
 		{
 		&DBread();
-		$route_ind = &map_name_to_ind( "Route", $input_thing, 0 );
+		$route_ind = &map_name_to_ind( "Route", $input_thing, "" );
 		}
 	    if( $route_ind )
 		{
@@ -5010,6 +5108,153 @@ sub pomap
     }
 
 #########################################################################
+#	Export the specified recs.					#
+#########################################################################
+sub export_recs
+    {
+    my( $argp, @inds ) = @_;
+    my $tbl = $argp->{table};
+    my @field_ptrs = &fields_of( $tbl );
+    my @fields = map { $_->{Name} } @field_ptrs;
+    # print "setup_eximport tbl=$tbl fields=[",join(",",@fields),"]<br>\n";
+    my @toprint = ( join("|",@fields) );
+    foreach my $ind ( @inds )
+        {
+	my @new_vals;
+	foreach my $local_fp ( @field_ptrs )
+	    {
+	    my $local_field_name = $local_fp->{Name};
+	    my $display_val;
+	    if ( $local_fp->{db} )
+		{
+		$display_val =
+		    join(", ",&list_to_names($ind,$local_field_name));
+		}
+	    elsif( ! defined($display_val=&DBget($ind,$local_field_name)) )
+		{ $display_val = ""; }
+	    $display_val =~ s/\r//g;
+	    $display_val =~ s/\n/ /gms;
+	    push( @new_vals, $display_val );
+	    }
+	push( @toprint, join("|",@new_vals) );
+	}
+    &write_file( $argp->{filename}, join("\n",@toprint,"") );
+    }
+
+#########################################################################
+#	Export the entire database.					#
+#########################################################################
+sub export_all
+    {
+    my( $export_dir ) = @_;
+    &DBread();
+    foreach my $distributor_ind ( &DBget("Distributor") )
+        {
+	my $prefix = join("/",$export_dir,&filename_of($distributor_ind));
+	&echodo("mkdir -p $prefix") if( ! -d $prefix );
+	foreach my $tbl ( "Distributor", "Staff", "Route" )
+	    {
+	    my @inds;
+	    if( $tbl eq "Distributor" )
+	        { @inds = ( $distributor_ind ); }
+	    elsif( $tbl eq "Staff" )
+	        { @inds = split(/,/,&DBget($distributor_ind,"Contact") ); }
+	    elsif( $tbl eq "Route" )
+		{
+		@inds = grep(
+		    &DBget($_,"Distributor") eq $distributor_ind,
+		    &DBget($tbl) );
+		foreach my $route_ind ( @inds )
+		    {
+		    my @patrons =
+			grep( &patron_from_route($_,$route_ind), DBget("Patron") );
+		    &export_recs({
+			table		=> "Patron",
+			filename	=> join("/",$prefix,
+						&filename_of($route_ind).".psf" )
+			}, @patrons );
+		    }
+		}
+	    &export_recs({
+	    	table		=> $tbl,
+		filename	=> "$prefix/$tbl.psf"
+		}, @inds );
+	    }
+	}
+    &DBpop();
+    }
+
+#########################################################################
+#	Imprt a particular table					#
+#########################################################################
+sub import_recs
+    {
+    my( $filename, $tbl ) = @_;
+    print STDERR "[Importing $tbl from $filename]\n";
+
+    my @field_ptrs = &fields_of( $tbl );
+    #my @fields = map { $_->{Name} } @field_ptrs;
+    my @lines = &read_lines( $filename );
+    my( @fields ) = split(/\|/,shift(@lines));
+    while( @lines )
+        {
+	my @pieces = split(/\|/,shift(@lines));
+	my %record = map {($_,shift @pieces)} @fields;
+	my $ind = &map_name_to_ind($tbl,$record{Name},"");
+	foreach my $local_fp ( @field_ptrs )
+	    {
+	    my $local_field_name = $local_fp->{Name};
+	    #print STDERR "$local_field_name ptr:  (", Dumper( $local_fp ), ")\n";
+	    if( $local_fp->{db} )
+		{
+		my $oldval = &DBget( $ind, $local_field_name );
+	        my %seenid;
+		grep( $seenid{$_}=1, split(/,/,$oldval) ) if( $oldval );
+		if( $record{$local_field_name} )
+		    {
+		    foreach my $piece (split(/\s*,\s*/,$record{$local_field_name}))
+			{
+			$seenid{&map_name_to_ind($local_fp->{db},$piece,"")}=1;
+			}
+		    }
+		$record{$local_field_name} = join(",",sort keys %seenid);
+		}
+	    &debput( $ind, $local_field_name, $record{ $local_field_name } );
+	    }
+	}
+    }
+
+#########################################################################
+#	Import anything in the named directory.				#
+#########################################################################
+sub import_all
+    {
+    my( $import_dir ) = @_;
+    print STDERR "import_dir=[$import_dir]...\n";
+    &DBwrite();
+    foreach my $distributor_filename ( &files_in( $import_dir ) )
+        {
+	print STDERR "df=$distributor_filename.\n";
+	my $distributor_name = &filename_to_text( $distributor_filename );
+	my $prefix = join("/",$import_dir,$distributor_filename);
+	print STDERR "prefix=$prefix.\n";
+	my $try_file;
+	my @routing_files = &files_in( $prefix, ".psf\$" );
+	foreach my $tbl ( "Distributor", "Staff", "Route" )
+	    {
+	    print STDERR "tbl=[$tbl]\n";
+	    &import_recs($try_file,$tbl) if(-e ($try_file="$prefix/$tbl.psf"));
+	    @routing_files = grep( $_ ne "$tbl.psf", @routing_files );
+	    }
+	foreach my $routing_file ( @routing_files )
+	    {
+	    &import_recs("$prefix/$routing_file","Patron");
+	    }
+	}
+    &DBpop();
+    }
+
+#########################################################################
 #	We're not a web program.  Triage!				#
 #########################################################################
 sub non_CGI_handler
@@ -5023,6 +5268,8 @@ sub non_CGI_handler
     elsif( $ARGV[0] eq "sanity" )	{ sanity();			}
     elsif( $ARGV[0] eq "trip" )		{ &trip_update();		}
     elsif( $ARGV[0] eq "pomap" )	{ &pomap( @ARGV[1..$#ARGV] );	}
+    elsif( $ARGV[0] eq "export" )	{ &export_all( $ARGV[1]);	}
+    elsif( $ARGV[0] eq "import" )	{ &import_all( $ARGV[1]);	}
     else
 	{ push(@problems,"Unknown argument '$ARGV[0]' specified."); }
 
@@ -5715,9 +5962,9 @@ sub rebalance_routes
 #########################################################################
 sub dumb_split
     {
-    my( $delimeter, @args ) = @_;
+    my( $delimeter, $tosplit ) = @_;
     $delimeter =~ s/([\(\)\+\[\]\$\|\.\*\\])/\\$1/g;
-    return split( $delimeter, $args[0], $args[1] );
+    return split( $delimeter, $tosplit );
     }
 
 #########################################################################
@@ -5736,7 +5983,7 @@ sub setup_eximport
 	lookup	=>	sub
 	    {
 	    my ( %record ) = @_;
-	    my $res = &map_name_to_ind("Patron",$record{Name},0);
+	    my $res = &map_name_to_ind("Patron",$record{Name});
 	    # print "lookup($record{Name}) returns [$res].<br>\n";
 	    return $res;
 	    }
@@ -5769,30 +6016,47 @@ sub setup_eximport
     }
 
 #########################################################################
-#	DBput for debugging import_distributor.				#
+#	DBput for debugging import_patrons.				#
 #########################################################################
 sub debput
     {
-    my( $tbl, $ind, $val ) = @_;
-    # print "tbl=$tbl ind=$ind val=[$val].<br>\n";
-    return &DBput( $tbl, $ind, $val );
+    my( $ind, $fld, $val ) = @_;
+    print STDERR __LINE__, ":  ind=$ind fld=$fld val=[",($val||"UNDEF"),"].\n";
+    return &DBput( $ind, $fld, $val );
     }
 
 #########################################################################
 #	Receive a file from the distributor source (probably Wellsky).	#
 #	The format of this file is as of yet unknown.			#
 #########################################################################
-sub import_distributor
+sub import_patrons
     {
-    my( $tbl, $distind, @rest ) = @_;
+    my( $argtbl, $ind, $format ) = @_;
+    my $distind;
+    my $routeind;
 
-    $tbl = "Patron";
+    if( $argtbl eq "Distributor" )
+        {
+	$distind = $ind;
+	}
+    elsif( $argtbl eq "Route" )
+        {
+	$distind = &DBget( $ind, "Distributor" );
+	$routeind = $ind;
+	}
+    my $tbl = "Patron";
     my $eipp = &setup_eximport( $distind, $tbl );
 
     my $contents = $cpi_vars::FORM{file_contents};
 
     # We do this in memory, but it's nice to have a copy
     &write_file( $eipp->{dir}."/import", $contents );
+
+    %porting = &get_drivers( $PORTING_DIR ) if( ! %porting );
+    my $distname = &DBget( $distind, "Name" );
+    my $routename = ( $routeind ? &DBget( $routeind, "Name" ) : "" );
+    $contents = &{ $porting{$format}{importer} }( $contents, $distname, $routename )
+        if( $porting{$format}{importer} );
 
     $contents =~ s/\r//gms;
     my( @records ) =
@@ -5808,9 +6072,16 @@ sub import_distributor
         {
 	my @field_vals = &dumb_split( $eipp->{field_separator}, $rec_string );
 	my %record = map { ( $_, shift(@field_vals) ) } @remote_field_names;
-	#my $ind = ( &{$eipp->{lookup}}( %record ) || &new_tagged_key( $tbl ) );
 	my $ind = &{$eipp->{lookup}}( %record );
-	&DBadd( $tbl, $ind=&new_tagged_key( $tbl ) ) if( ! $ind );
+	if( $ind )
+	    {
+	    print STDERR "lookup($record{Name}) returned $ind (updating).\n";
+	    }
+	else
+	    {
+	    &DBadd( $tbl, $ind=&new_tagged_key( $tbl ) );
+	    print STDERR "lookup($record{Name}) added $ind to $tbl.\n";
+	    }
 	foreach my $fp ( @{ $eipp->{field_list} } )
 	    {
 	    if( $fp->{import_func} )
@@ -5821,10 +6092,30 @@ sub import_distributor
 		    { &debput( $ind, $fp->{local}, $record{ $fp->{remote} } ); }
 		else
 		    {
-		    my @dbids;
-		    foreach my $piece (split(/\s*,\s*/,$record{$fp->{remote}}))
-			{ push( @dbids, &map_name_to_ind( $local_fp->{db}, $piece ) ); }
-		    &debput( $ind, $fp->{local}, join(",",@dbids) );
+		    if( $local_fp->{db} eq "Distributor" && $distind )
+		        { &debput( $ind, $fp->{local}, $distind ); }
+		    elsif( $local_fp->{db} eq "Route" && $routeind )
+		        { &debput( $ind, $fp->{local}, $routeind ); }
+		    else
+			{
+		        my %seenid;
+			my $oldval = &DBget( $ind, $fp->{local} );
+			grep( $seenid{$_}=1, split(/,/,$oldval) ) if( $oldval );
+			if( $record{$fp->{remote}} )
+			    {
+			    foreach my $piece (split(/\s*,\s*/,$record{$fp->{remote}}))
+				{
+				if( $local_fp->{db} eq "Distributor" && $distind )
+				    { $piece = $distind; }
+				elsif( $local_fp->{db} eq "Route" && $routeind )
+				    { $piece = $routeind; }
+				else
+				    { $piece = &map_name_to_ind( $local_fp->{db}, $piece, "" ); }
+				$seenid{$piece}=1;
+				}
+			    }
+			&debput( $ind, $fp->{local}, join(",",sort keys %seenid) );
+			}
 		    }
 		}
 	    else
@@ -5835,11 +6126,12 @@ sub import_distributor
 	$recs_uploaded++;
 	}
     &DBpop();
-    &show_record(
-	msg=>"$recs_uploaded records of width ". scalar(@remote_field_names). " uploaded.",
-	tbl=>$tbl,
-	ind=>$distind,
-	editmode=>0 );
+    return"$recs_uploaded records of width ". scalar(@remote_field_names). " uploaded.";
+#    &show_record(
+#	msg=>"$recs_uploaded records of width ". scalar(@remote_field_names). " uploaded.",
+#	tbl=>$tbl,
+#	ind=>$distind,
+#	editmode=>0 );
     }
 
 #########################################################################
@@ -5847,47 +6139,97 @@ sub import_distributor
 #########################################################################
 sub export_with_custom_header
     {
-    my( $tbl, $distind, @rest ) = @_;
+    my( $argtbl, $ind, $format ) = @_;
 
-    $tbl = "Patron";
+    my $routeind;
+    my $distind;
+    my @patrons;
+
+    my $export_file = "/var/log/routing/export.$format";
+    my $export_html = "/var/log/routing/export.html";
+    #print "Content-type:  text/plain\n\nArgs:  ",join(", ",@_), "\n\n";
+
+    if( $argtbl eq "Distributor" )
+        {
+	$distind = $ind;
+	@patrons = &patrons_of_distributor( $distind );
+	#print __LINE__, " Distributor [",join(",",@patrons),"]\n";
+	}
+    elsif( $argtbl eq "Route" )
+    	{
+	$routeind = $ind;
+	@patrons = &patrons_on( $routeind );
+	$distind = &DBget( $routeind, "Distributor" );
+	#print __LINE__, " Route [",join(",",@patrons),"]\n";
+	}
+    else
+        {
+	print __LINE__, " Unknown argtbl = [$argtbl]\n";
+	}
+
+    my $tbl = "Patron";
     my $eipp = &setup_eximport( $distind, $tbl );
 
     my @remote_field_names = map { $_->{remote} } @{$eipp->{field_list}};
     my @records = ( join( $eipp->{field_separator}, @remote_field_names ) );
 
-    foreach my $ind ( &DBget($tbl) )
-        {
-	if( &DBget( $ind, "Distributor" ) eq $distind )
+    foreach my $ind ( @patrons )
+	{
+	my @new_vals;
+	foreach my $fp ( @{ $eipp->{field_list} } )
 	    {
-	    my @new_vals;
-	    foreach my $fp ( @{ $eipp->{field_list} } )
-	        {
-		my $local_field_name = $fp->{local};
-		if( $fp->{export_func} )
-		    { push( @new_vals, &{$fp->{export_func}}($ind) ); }
-		elsif( my $local_fp = $TABLE_FIELDS{$tbl}{$local_field_name} )
+	    my $local_field_name = $fp->{local};
+	    if( $fp->{export_func} )
+		{ push( @new_vals, &{$fp->{export_func}}($ind) ); }
+	    elsif( my $local_fp = $TABLE_FIELDS{$tbl}{$local_field_name} )
+		{
+		my $display_val;
+		if ( $local_fp->{db} )
 		    {
-		    my $display_val;
-		    if ( $local_fp->{db} )
-			{
-			$display_val =
-			    join(", ",&list_to_names($ind,$local_field_name));
-			}
-		    elsif( ! defined($display_val=&DBget($ind,$local_field_name)) )
-		        { $display_val = ""; }
-		    push( @new_vals, $display_val );
+		    $display_val =
+			join(", ",&list_to_names($ind,$local_field_name));
 		    }
-		else
-		    { &autopsy("No $local_field_name in $tbl."); }
+		elsif( ! defined($display_val=&DBget($ind,$local_field_name)) )
+		    { $display_val = ""; }
+		$display_val =~ s/\r//g;
+		$display_val =~ s/\n/ /gms;
+		push( @new_vals, $display_val );
 		}
-	    push( @records, join( $eipp->{field_separator}, @new_vals ) );
+	    else
+		{ &autopsy("No $local_field_name in $tbl."); }
+	    }
+	push( @records, join( $eipp->{field_separator}, @new_vals ) );
+	}
+    my $contents = join( $eipp->{record_separator}, @records, "" );
+    my $remote_name = &filename_of( $distind )
+        . ( $routeind ? "_".&filename_of($routeind) : "" )
+	. ".$format";
+    if( $format eq "psf" )
+	{
+	print
+	    "Content-type:  text/plain\n",
+	    "Content-disposition:  attachment; filename=\"$remote_name\"\n\n",
+	    $contents;
+	}
+    else
+        {
+	%porting = &get_drivers( $PORTING_DIR ) if( ! %porting );
+        if( $porting{$format}{exporter} )
+	    { print &{ $porting{$format}{exporter} }( $contents ); }
+	else
+	    {
+	    my $TABLE_FUN="SCRIPT_NAME='' SCRIPT_FILENAME='' /usr/local/bin/table_fun";
+	    my @table_formats = &read_lines( "$TABLE_FUN -show=outputs |" );
+	    print "Content-type:  ", &mime_string( $export_file ), "\n\n";
+	    my $cmd = "$TABLE_FUN -it=psf" .
+		( &inlist( $format, @table_formats )
+		? " -ot=$format"
+		: " -of=$export_html; /usr/local/bin/nene $export_html $export_file; cat $export_file" );
+	    open( OUT, "| $cmd" ) || &autopsy("Cannot write to pipe ${cmd}:  $!");
+	    print OUT $contents;
+	    close( OUT );
 	    }
 	}
-    my $res = join( $eipp->{record_separator}, @records, "" );
-    print
-	"Content-type:  text/plain\n",
-	"Content-disposition:  attachment; filename=\"$tbl.csv\"\n\n",
-	$res;
     &cleanup(0);
     }
 
