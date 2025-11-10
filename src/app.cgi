@@ -2292,6 +2292,7 @@ sub get_patron_order
     my( $route_ind ) = @_;
     my %points;
 
+    print STDERR __LINE__, ": get_patron_order($route_ind)\n";
     $current_route		= &DBget( $route_ind, "Name" );
     $current_staff		= &DBget( $route_ind, "Driver" );
     $current_distributor	= &DBget( $route_ind, "Distributor" );
@@ -2372,11 +2373,13 @@ sub get_patron_order
 	}
     my @stoplist = &make_stop_list();
 
-    if( !($_=&db_to_order_string($route_ind) ) )
+    if( !&DBget($route_ind,"Route_starts_with")
+     && !&DBget($route_ind,"Route_ends_with") )
         { return &optimize_order(@stoplist); }
     else
     	{
-	my @ranges = &get_route_ranges( $_, $route_ind );
+	#my @ranges = &get_route_ranges( $_, $route_ind );
+	my @ranges = &get_route_ranges( $route_ind );
 	my $begin_optimize = pop( @{$ranges[0]} );
 	my $end_optimize = shift( @{$ranges[2]} );
 	return
@@ -2799,6 +2802,7 @@ sub patrons_on
     my @ret =
         grep( &DBget($_,"Status") eq "Active" && &patron_from_route($_,$route_ind),
 	    &DBget("Patron") );
+    print STDERR __LINE__, " patrons_on($route_ind) = [", join(",",@ret), "]\n";
     return @ret;
     }
 
@@ -4495,10 +4499,12 @@ sub get_route_ranges
     my( $route_ind ) = @_;
     my $distributor_ind = &DBget( $route_ind, "Distributor" );
     my @patrons_to_route = &patrons_on( $route_ind );
+    print STDERR __LINE__, ":  patrons_to_route=[",join(",",@patrons_to_route),"]\n";
     my @patron_ranges = ();
     my $order_string = &db_to_order_string( $route_ind );
+    print STDERR __LINE__, ":  order_string=[$order_string]\n";
     $current_route = &DBget( $route_ind, "Name" );
-    if( ! $order_string )
+    if( ! $order_string || $order_string eq "::" )
 	{
 	@patron_ranges =
 	    (
@@ -4512,6 +4518,7 @@ sub get_route_ranges
     else
 	{
 	# Start with old route minus people no longer on route
+	print STDERR __LINE__, ":  patrons_to_route now =[",join(",",@patrons_to_route),"]\n";
 	my %somewhere_on_route =
 	    map {($_,1)} ( @patrons_to_route, $distributor_ind );
 	my @range_strings = split( /:/, $order_string );
@@ -6153,18 +6160,18 @@ sub export_with_custom_header
         {
 	$distind = $ind;
 	@patrons = &patrons_of_distributor( $distind );
-	#print __LINE__, " Distributor [",join(",",@patrons),"]\n";
+	#print __LINE__, ": Distributor [",join(",",@patrons),"]\n";
 	}
     elsif( $argtbl eq "Route" )
     	{
 	$routeind = $ind;
 	@patrons = &patrons_on( $routeind );
 	$distind = &DBget( $routeind, "Distributor" );
-	#print __LINE__, " Route [",join(",",@patrons),"]\n";
+	#print __LINE__, ": Route [",join(",",@patrons),"]\n";
 	}
     else
         {
-	print __LINE__, " Unknown argtbl = [$argtbl]\n";
+	print __LINE__, ": Unknown argtbl = [$argtbl]\n";
 	}
 
     my $tbl = "Patron";

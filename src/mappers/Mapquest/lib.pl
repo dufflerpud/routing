@@ -460,6 +460,7 @@ $driverp->{order_query} = sub
     print STDERR "order_query distributor = $main::current_distributor .\n";
     $driverp->{KEY} = &main::DBget( $main::current_distributor, "Mapquest_key" );
     print STDERR "k=$driverp->{KEY}.\n";
+    print STDERR "stoplist=((",Dumper(\@stoplist),"))\n";
 
     my @mapquest_locations;
     #my @debug_list;
