@@ -20,20 +20,29 @@ use strict;
 
 use lib "/usr/local/lib/perl";
 use cpi_vars;
-use cpi_file qw( fatal cleanup read_file write_file );
+use cpi_file qw( fatal cleanup read_file write_file read_lines );
 use cpi_arguments qw( parse_arguments );
 use cpi_reorder qw( orderer );
+use cpi_config qw( read_map );
+use cpi_filename qw( just_ext_of );
+
+#use Data::Dumper;	# Very useful for debugging
 
 # Put constants here
 
 my @EXCLUDES = qw( pos0 len0 pos1 len1 pos2 len2 pos3 len3 pos4 len4 );
+my $TOWNS = "/usr/local/projects/routing/lib/towns.list";
+my $ROADS = "/usr/local/projects/routing/lib/roads.list";
 
 our %ONLY_ONE_DEFAULTS =
     (
-    "i"	=>	"/dev/stdin",
-    "o"	=>	"/dev/stdout",
-    "m"	=>	"dump",
-    "v"	=>	"0",
+    "ifile"		=>	"/dev/stdin",
+    "itype"		=>	"",
+    "ofile"		=>	"/dev/stdout",
+    "otype"		=>	"",
+    "distributor"	=>	"BI Distributor",
+    "route"		=>	"",
+    "verbosity"		=>	"0",
     );
 
 # Put variables here.
@@ -106,10 +115,11 @@ sub column4
 #########################################################################
 sub read_pdf
     {
+    $ARGS{itype} = &just_ext_of( $ARGS{ifile}, "pdf" ) if( ! $ARGS{itype} );
     my $contents =
-	( $ARGS{i} =~ /\.pdf$/
-        ? &read_file( "pdftotext -layout $ARGS{i} - |" )
-	: &read_file( $ARGS{i} ) );
+	( $ARGS{itype} eq "pdf"
+        ? &read_file( "pdftotext -layout $ARGS{ifile} - |" )
+	: &read_file( $ARGS{ifile} ) );
     my @lines = split(/\n/,$contents);
 
     my $recp;
@@ -125,10 +135,12 @@ sub read_pdf
 	    #print "1=[$1]\n 2=[$2]\n 3=[$3]\n 4=[$4]\n 5=[$5]\n 6=[$6]\n 7=[$7]\n 8=[$8]\n 9=[$9]\n";
 	    $recp =
 		{
-		Ind	=>	$2,
-		Name	=>	$4,
-		Address	=>	$6,
-		Phone	=>	$8
+		Ind		=>	$2,
+		Name		=>	$4,
+		Distributor	=>	$ARGS{distributor},
+		Route		=>	$ARGS{route},
+		Address		=>	$6,
+		Phone		=>	$8
 		};
 	    $recp->{pos0}=0;				$recp->{len0}=length($1);
 	    $recp->{pos1}=$recp->{pos0}+$recp->{len0};	$recp->{len1}=length($3);
@@ -198,12 +210,55 @@ sub read_pdf
     }
 
 #########################################################################
+#	Imported addresses come in all kinds of formats.  Try to fix	#
+#	format.								#
+#########################################################################
+sub fix_addresses
+    {
+    my( @recs ) = @_;
+
+    my( $townsearch, %townmap ) = &read_map( $TOWNS );
+    my( $roadsearch, %roadmap ) = &read_map( $ROADS );
+
+    foreach my $recp ( @recs )
+	{
+	$recp->{Name} = "$2 $1"
+	    if( $recp->{Name} && $recp->{Name}=~/(.*),\s+(.*)/ );
+	$recp->{Phone} =~ s/ //g if( $recp->{Phone} );
+	if( $recp->{Address} )
+	    {
+	    my @resarray;
+	    #print STDERR "Looking at [$recp->{Address}]\n";
+	    my $no_commas = $recp->{Address};
+	    $no_commas =~ s/,/ /g;
+	    if( $no_commas !~ /^(.*?)[^\w]*\b($roadsearch)\b[^\w]*(.*?)$/ims )
+		{ push( @resarray, $recp->{Address} ); }
+	    else
+		{
+		my( $streetinfo, $streettype, $rest0 ) = ( $1, $2, $3 );
+		push( @resarray, $streetinfo." ".$roadmap{ lc($streettype) } );
+		if( $rest0 !~ /^[^\w]*(.*?)\s*\b($townsearch)\b[^\w#]*(.*?)$/ims )
+		    { push( @resarray, $rest0 ); }
+		else
+		    {
+		    my( $apartment, $town, $post_town ) = ( $1, $2, $3 );
+		    push( @resarray, $apartment ) if( $apartment =~ /\w/ );
+		    push( @resarray, $townmap{ lc( $town ) } );
+		    push( @resarray, $post_town =~ /\w/ ? $post_town : "ME" );
+		    }
+		}
+	    $recp->{Address} = join(",",@resarray);
+	    }
+	}
+    }
+
+#########################################################################
 #	Debug output							#
 #########################################################################
-sub dump_recs
+sub recs_to_lpf
     {
-    my @order = qw( Name Phone Address FoodPrefs Cats Dogs Driver_note );
     my( @recs ) = @_;
+    my @order = qw( Name Distributor Route Phone Address FoodPrefs Cats Dogs Driver_note );
     my @toprint;
     foreach my $recp ( @recs )
         {
@@ -212,16 +267,17 @@ sub dump_recs
 	    &orderer({first=>\@order,exclude=>\@EXCLUDES},
 	        keys %{$recp} ) )
 	    {
+	    next if( $field eq "Ind" );
 	    push( @toprint, sprintf("%-20s%s\n",$field.":",$recp->{$field}) );
 	    }
 	}
-    &write_file( $ARGS{o}, @toprint );
+    &write_file( $ARGS{ofile}, @toprint );
     }
 
 #########################################################################
-#	Output records fields in order expected by routing software	#
+#	Output records fields in character separated fields.		#
 #########################################################################
-sub export_recs
+sub recs_to_psv
     {
     my @order = qw(
 	Ind Name Distributor Route Email Phone Notify Address Coords Status
@@ -244,7 +300,18 @@ sub export_recs
 	    join("|",map {defined($recp->{$_})?$recp->{$_}:""} @field_order).
 		"\n" );
 	}
-    &write_file( $ARGS{o}, @toprint );
+
+    if( $ARGS{otype} eq "psv" )
+        { &write_file( $ARGS{ofile}, @toprint ); }
+    else
+	{
+	my $cmd = "table_fun"
+	    ." -idelimeter '|' -itype csv -ifile /dev/stdin"
+	    ." -otype $ARGS{otype} -ofile $ARGS{ofile}";
+	open( OUT, "| $cmd" ) || &autopsy( "Command [$cmd] failed:  $!");
+	print OUT @toprint;
+	close( OUT );
+	}
     }
 
 #########################################################################
@@ -257,10 +324,13 @@ else
     { &parse_arguments(); }
 
 my @recs = &read_pdf();
+&fix_addresses( @recs );
 
-if( $ARGS{m} eq "dump" )
-    { &dump_recs( @recs ); }
+$ARGS{otype} = &just_ext_of( $ARGS{ofile}, "psv" ) if( ! $ARGS{otype} );
+
+if( $ARGS{otype} eq "lpf" )
+    { &recs_to_lpf( @recs ); }
 else
-    { &export_recs( @recs ); }
+    { &recs_to_psv( @recs ); }
 
 &cleanup(0);
