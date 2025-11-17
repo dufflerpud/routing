@@ -930,7 +930,7 @@ sub i_can
     my $distributor_ind;
 
     # All hail the programmer.  Bow down before me ...
-    if( &in_group($cpi_vars::USER,"can_administer_route") )
+    if( &in_group($cpi_vars::USER,"can_administer_routing") )
         { $ret = 1; }
     elsif ( $tbl eq "Staff" && ! $ind )
         { $ret = 1; }
