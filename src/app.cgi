@@ -1113,6 +1113,7 @@ sub select_list
     my(	$fp, $varval, @values ) = @_;
 
     my $fieldname	= $fp->{Name};
+    #print STDERR "select_list($fieldname,",($varval||"UNDEF"),",[",join(",",@values),"])\n";
     my $fieldhdr	= "XL(".( $fp->{header} || &filename_to_text($fieldname )).")";
     my $allownone	= $fp->{allownone} ;
     my $count		= ( $fp->{count} || 1 );
@@ -1137,7 +1138,7 @@ sub select_list
         { grep( $flags{$_}=" checked", @curvals ); }
     else
 	{
-	my $showvalues	= ($nvalues > 10 ? 10 : $nvalues);
+	my $showvalues	= ($nvalues > 9 ? 10 : $nvalues+1);
 	my $selectarg	= ($count>1?" multiple size=$showvalues":"");
 	push( @toprint, "<select name=$varname$selectarg$onchange>\n",
 	    "<option disabled=disabled value='BlAnK'>",
