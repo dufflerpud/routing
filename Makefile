@@ -15,14 +15,8 @@ include $(PROJECTSDIR)/common/Makefile.std
 
 MERGE_DIR=/usr/local/projects/$(PROJECT).dirty
 SAMPLE_DISTRIBUTOR=DC_Distributor
-LOGDIR=/var/logs/$(PROJECT)
+LOGDIR=/var/log/$(PROJECT)
 LOGDIRS=$(LOGDIR)/patrons $(LOGDIR)/trips $(LOGDIR)/html $(LOGDIR)/progress
-
-dirs:
-		mkdir -p $(LOGDIRS)
-		chmod 777 $(LOGDIRS)
-		[ -e $(LOGDIR)/stderr ] || ln -s /var/log/stderr/$(PROJECT) $(LOGDIR)/stderr
-		[ -e $(LOGDIR)/httpd ] || ln -s ../httpd/$(PROJECT) $(LOGDIR)/httpd
 
 launder:
 		rm -rf cache
@@ -34,6 +28,42 @@ merge:
 		#make launder
 		(cd $(MERGE_DIR)/Distributors; find . -print | grep -v $(SAMPLE_DISTRIBUTOR) | cpio -o) | (cd Distributors; cpio -idumv)
 		cp $(MERGE_DIR)/monthly_reports .
+
+# ROUTING_WWW_DIR="/var/www/html"
+ROUTING_DB="$(PROJECTDIR)/db"
+ROUTING_ADMINISTRATOR="administrator"
+ROUTING_ADMINISTRATOR_PASSWORD="OOPSCHANGEME!"
+
+install:
+	install -d -m 777 -o root -g root		$(LOGDIR)/. 
+	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/assessments 
+	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/html 
+	ln -s	 ../httpd/routing			$(LOGDIR)/httpd
+	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/import 
+	install -d -m 777 -o root -g root		$(LOGDIR)/patrons 
+	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/progress 
+	ln -s	 /var/log/stderr/routing		$(LOGDIR)/stderr
+	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/trips 
+	: install -d -m 755 -o root -g root		$(ROUTING_WWW_DIR)/. 
+	: ln -s	 sto/default.css			$(ROUTING_WWW_DIR)/default.css
+	: ln -s	 /non_sys$(ROUTING_WWW_DIR)		$(ROUTING_WWW_DIR)/routing
+	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(WWWDIR) 
+	ln -s	 routing_common				$(WWWDIR)/common
+	: ln -s	 $(CPI_USER_DIR)			$(WWWDIR)/common.projects
+	install -d -m 755 -o root -g root		$(WWWDIR)/forms 
+	ln -s	 $(PROJECTDIR)/help			$(WWWDIR)/help
+	install -d -m 755 -o root -g root		$(WWWDIR)/icons 
+	install -d -m 755 -o root -g root		$(WWWDIR)/icons/kml 
+	ln -s	 $(LOGDIR)/progress			$(WWWDIR)/progress
+	install -d -m 755 -o root -g root		$(WWWDIR)/ref 
+	install -d -m 777 -o root -g root		$(WWWDIR)/routes 
+	ln -s	 ../routing_common			$(WWWDIR)/routes/common
+	install -d -m 755 -o root -g root		$(WWWDIR)/routing 
+	ln -s	 .					$(WWWDIR)/routing/routing
+	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(WWWDIR)/routing_common 
+	install -d -m 755 mail mail			$(WWWDIR)/vcf 
+	install -d -m 777 -o root -g root		$(ROUTING_DB)
+	$(MAKE) std_$@ ORIGINAL_TARGET=$@
 
 %:
 		@echo "Invoking std_$@ rule:"
