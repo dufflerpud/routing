@@ -38,27 +38,34 @@ install:
 	install -d -m 777 -o root -g root		$(LOGDIR)/. 
 	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/assessments 
 	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/html 
+	rm -f $(LOGDIR)/httpd
 	ln -s	 ../httpd/routing			$(LOGDIR)/httpd
 	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/import 
 	install -d -m 777 -o root -g root		$(LOGDIR)/patrons 
 	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/progress 
+	rm -f $(LOGDIR)/stderr
 	ln -s	 /var/log/stderr/routing		$(LOGDIR)/stderr
 	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/trips 
 	: install -d -m 755 -o root -g root		$(ROUTING_WWW_DIR)/. 
 	: ln -s	 sto/default.css			$(ROUTING_WWW_DIR)/default.css
 	: ln -s	 /non_sys$(ROUTING_WWW_DIR)		$(ROUTING_WWW_DIR)/routing
 	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(WWWDIR) 
+	rm -f $(WWWDIR)/common
 	ln -s	 routing_common				$(WWWDIR)/common
 	: ln -s	 $(CPI_USER_DIR)			$(WWWDIR)/common.projects
 	install -d -m 755 -o root -g root		$(WWWDIR)/forms 
+	rm -f $(WWWDIR)/help
 	ln -s	 $(PROJECTDIR)/help			$(WWWDIR)/help
 	install -d -m 755 -o root -g root		$(WWWDIR)/icons 
 	install -d -m 755 -o root -g root		$(WWWDIR)/icons/kml 
+	rm -f $(WWWDIR)/progress
 	ln -s	 $(LOGDIR)/progress			$(WWWDIR)/progress
 	install -d -m 755 -o root -g root		$(WWWDIR)/ref 
 	install -d -m 777 -o root -g root		$(WWWDIR)/routes 
+	rm -f $(WWWDIR)/routes/common
 	ln -s	 ../routing_common			$(WWWDIR)/routes/common
 	install -d -m 755 -o root -g root		$(WWWDIR)/routing 
+	rm -f $(WWWDIR)/routing/routing
 	ln -s	 .					$(WWWDIR)/routing/routing
 	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(WWWDIR)/routing_common 
 	install -d -m 755 mail mail			$(WWWDIR)/vcf 
