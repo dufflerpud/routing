@@ -73,7 +73,7 @@ package main;
 &setup(
 	stderr=>"routing",
 	Qrequire_captcha=>1,
-	preset_language=>"en",
+	Qpreset_language=>"en",
 	anonymous_funcs=>"map_with_custom_header,export_with_custom_header,anonymous_new_record,anonymous_add_record,anonymous_new_form"
 	);
 
@@ -620,7 +620,9 @@ my %SELECT_FROM_LIST =
 	    { name=>"No frozen bag",	style=>&BLACK_ON("#ffb0b0")	},
 	    { name=>"No beverage bag",	style=>&BLACK_ON("#ffb0b0")	},
 	    { name=>"Special meal",	style=>&BLACK_ON("#ffb0b0")	},
-	    { name=>"Mask required",	style=>&BLACK_ON("#ff0000")	} ]
+	    { name=>"Mask required",	style=>&BLACK_ON("#ff0000")	},
+	    { name=>"ENAP",		style=>&BLACK_ON("#80ffff")	}
+	    ]
     );
 
 my %OTHER_STYLES=
