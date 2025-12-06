@@ -34,7 +34,7 @@ use lib "/usr/local/lib/perl";
 use cpi_compress_integer qw(compress_integer);
 use cpi_qrcode_of qw(qrcode_of);
 use cpi_translate qw(xlate xlfatal xprint);
-use cpi_user qw(admin_page in_group logout_select);
+use cpi_user qw(in_group logout_select);
 use cpi_cache qw(cache);
 use cpi_hash qw(hashof);
 use cpi_drivers qw(get_drivers);
@@ -6254,8 +6254,6 @@ sub CGI_handler
 	{ &watch_a_route( $cpi_vars::FORM{watch} ); }
     elsif( $cpi_vars::FORM{route_status_edit} )
 	{ &trip_update(); }
-    elsif( $cpi_vars::FORM{func} eq "admin" )
-	{ &admin_page(); }
     elsif( $cpi_vars::FORM{func} eq "dologin" )
 	{ &interactive_handler( undef, () ); }
     else
