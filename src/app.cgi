@@ -3933,7 +3933,7 @@ EOF
 	}
 
     my $lcpluralized = &nword(lc($args{tbl}),$seen);
-    my $matches = ( $counter!=$seen ? "matching" : $seen == 1 ? "matches" : "match" );
+    my $matches = ( $counter!=$seen ? "matching" : $seen==1 ? "matches" : "match" );
     push( @toprint, "</th><th align=right>",
         ( $seen != $counter
 	    ? "XL(Showing) $seen XL($lcpluralized of) $counter XL("
