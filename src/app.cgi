@@ -116,7 +116,6 @@ our $PROG_URL		= $BASES_URL."/index.cgi";
 $PROG_URL = $BASES_URL."/index-test.cgi" if(($ENV{SCRIPT_NAME}||"") =~ /-test/);
 my $PROJLONG		= "Routing";
 my $PROJECT		= "Routing";
-$cpi_vars::PROG		= ( $_=$0, s+.*/++g, s/\..*//, $_ );
 my $LOGDIR		= "/var/log/$PROJECT";
 my $PATRON_DIR		= "$LOGDIR/patrons";
 my $TRIPS_DIR		= "$LOGDIR/trips";
@@ -3936,8 +3935,8 @@ EOF
     my $matches = ( $counter!=$seen ? "matching" : $seen==1 ? "matches" : "match" );
     push( @toprint, "</th><th align=right>",
         ( $seen != $counter
-	    ? "XL(Showing) $seen XL($lcpluralized of) $counter XL("
-	    : "$seen XL($lcpluralized" ),
+	    ? "XL(Showing) XL($lcpluralized of) $counter XL("
+	    : "XL($lcpluralized" ),
 	" $matches description)</th></tr>\n",
 	"</table></th></table>\n" );
     if( $args{lvl} > 0 )
