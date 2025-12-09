@@ -34,7 +34,7 @@ use lib "/usr/local/lib/perl";
 use cpi_compress_integer qw(compress_integer);
 use cpi_qrcode_of qw(qrcode_of);
 use cpi_translate qw(xlate xlfatal xprint);
-use cpi_user qw(in_group logout_select);
+use cpi_user qw(in_group logout_select can_admin);
 use cpi_cache qw(cache);
 use cpi_hash qw(hashof);
 use cpi_drivers qw(get_drivers);
@@ -923,7 +923,7 @@ sub i_can
     my $distributor_ind;
 
     # All hail the programmer.  Bow down before me ...
-    if( &in_group($cpi_vars::USER,"can_administer_routing") )
+    if( &can_admin() )
         { $ret = 1; }
     elsif ( $tbl eq "Staff" && ! $ind )
         { $ret = 1; }
