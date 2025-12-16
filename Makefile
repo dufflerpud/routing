@@ -55,6 +55,7 @@ install:
 	: ln -s	 $(CPI_USER_DIR)			$(WWWDIR)/common.projects
 	install -d -m 755 -o root -g root		$(WWWDIR)/forms 
 	rm -f $(WWWDIR)/help
+	install -d -m 777 -o $(WUSER) -g $(WGROUP)	$(PROJECTDIR)/cache
 	ln -s	 $(PROJECTDIR)/help			$(WWWDIR)/help
 	install -d -m 755 -o root -g root		$(WWWDIR)/icons 
 	install -d -m 755 -o root -g root		$(WWWDIR)/icons/kml 
