@@ -46,7 +46,7 @@ use cpi_send_file qw(sendmail);
 use cpi_english qw(nword plural);
 use cpi_db qw(dbadd dbdel dbdelkey dbget dbnewkey dbpop dbput dbread dbwrite
  DBread DBwrite DBpop DBget DBput DBdelkey DBadd DBdel DBnewkey);
-use cpi_file qw(autopsy cleanup fatal files_in read_file read_lines
+use cpi_file qw(autopsy cleanup fatal files_in fqfiles_in read_file read_lines
  tempfile write_file echodo );
 use cpi_filename qw(filename_to_text text_to_filename);
 use cpi_time qw(time_string);
@@ -3357,13 +3357,11 @@ sub dump_route
 	}
     else
 	{	# to_email:  Sending e-mail.  Print status to browser.
-	opendir(D,$DEST_HTTP) ||
-	    &autopsy("Cannot opendir($DEST_HTTP):  $!");
-	unlink(
-	    map { "$DEST_HTTP/$_" }
-		grep( /^$filename\..*\.$request{type}$/,
-		    readdir(D) ) );
-	closedir( D );
+
+	# This is old, probably should be removed.
+	unlink( &fqfiles_in($DEST_HTTP,"$filename\..*\.$request{type}") )
+	    if( -d $DEST_HTTP );
+
 	my $secure_name = join(".",$filename,&secret_id(),$request{type});
 	my $distributorind = &DBget( $tind, "Distributor" );
 	my $distributorname = ( $distributorind ? &DBget($distributorind,"Name") : "Unknown" );
@@ -3374,13 +3372,8 @@ sub dump_route
 	    { system("mkdir -p $local_dir; chmod 755 $local_dir; ln -s ../common $local_dir/common; ln $local_dir/../index.cgi $local_dir/index.cgi"); }
 	else
 	    {
-	    opendir(D,$local_dir) ||
-		&autopsy("Cannot opendir($local_dir):  $!");
-	    unlink(
-		map { "$local_dir/$_" }
-		    grep( /^$filename\..*\.$request{type}$/,
-			readdir(D) ) );
-	    closedir( D );
+	    unlink( &fqfiles_in( $local_dir, "$filename\..*\.$request{type}" ) )
+	        if( -d $local_dir );
 	    }
 
 	my $live_url = join("/",$cpi_vars::URL,$distributorfilename,$secure_name);
