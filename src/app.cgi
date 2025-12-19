@@ -104,7 +104,7 @@ my $PORTING_DIR		= $SRC."/porting";
 our $FORMNAME		= "form";
 $cpi_vars::CACHEDIR 	= "$cpi_vars::BASEDIR/cache";
 my $DEST_DIR		= "routes";
-my $DEST_HTTP		= "/var/www/routing$cpi_vars::OFFSET/$DEST_DIR";
+my $DEST_HTTP		= "%%WWWDIR%%/$DEST_DIR";
 $cpi_vars::DOMAIN	= "Brightsands.com";
 my $MAILSRC		= "routing\@$cpi_vars::DOMAIN";
 my $BASE_URL		= "http://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
@@ -141,7 +141,7 @@ my $COSTSDIR		= $cpi_vars::BASEDIR."/costs";
 
 my $EXIT_FILE		= $cpi_vars::BASEDIR."/exit_reason.txt";
 my $FORM_URL		= "$BASES_URL/forms";
-my $FORM_DIR		= "/var/www/routing$cpi_vars::OFFSET/forms";
+my $FORM_DIR		= "%%%WWWDIR%%/forms";
     
 # This used to decode FORM{progress} everytime the driver's
 # browser updated, but since users only rarely track the
