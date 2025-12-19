@@ -65,6 +65,7 @@ install:
 	install -d -m 777 -o root -g root		$(WWWDIR)/routes 
 	rm -f $(WWWDIR)/routes/common
 	ln -s	 ../routing_common			$(WWWDIR)/routes/common
+	install -o $(WUSER) -g $(WGROUP) -m 0644 lib/*.css lib/*.jpg $(WWWDIR)/routes/common
 	install -d -m 755 -o root -g root		$(WWWDIR)/routing 
 	rm -f $(WWWDIR)/routing/routing
 	ln -s	 .					$(WWWDIR)/routing/routing
