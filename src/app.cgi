@@ -47,7 +47,7 @@ use cpi_english qw(nword plural);
 use cpi_db qw(dbadd dbdel dbdelkey dbget dbnewkey dbpop dbput dbread dbwrite
  DBread DBwrite DBpop DBget DBput DBdelkey DBadd DBdel DBnewkey);
 use cpi_file qw(autopsy cleanup fatal files_in fqfiles_in read_file read_lines
- tempfile write_file echodo );
+ tempfile write_file echodo mkdirp );
 use cpi_filename qw(filename_to_text text_to_filename);
 use cpi_time qw(time_string);
 use cpi_cgi qw(CGIheader note_to_html safe_html show_vars);
@@ -151,7 +151,7 @@ my $FORM_DIR		= "/var/www/routing$cpi_vars::OFFSET/forms";
 my %ARGS =		# Right now, no way to change these default values.
     (
     "r"			=>	"mapquest",
-    "l"			=>	"/var/www/routing$cpi_vars::OFFSET/routes"
+    "l"			=>	"%%WWWDIR%%/routes"
     );
 
 my %PHONE_HANDLERS =
@@ -3369,7 +3369,9 @@ sub dump_route
 	my $local_dir = "$DEST_HTTP/$distributorfilename";
 
 	if( ! -d $local_dir )
-	    { system("mkdir -p $local_dir; chmod 755 $local_dir; ln -s ../common $local_dir/common; ln $local_dir/../index.cgi $local_dir/index.cgi"); }
+	    {
+	    &mkdirp( 0755, $local_dir );
+	    system("ln -s ../common $local_dir/common; ln $local_dir/../index.cgi $local_dir/index.cgi"); }
 	else
 	    {
 	    unlink( &fqfiles_in( $local_dir, "$filename\..*\.$request{type}" ) )
@@ -4751,7 +4753,8 @@ sub setup_file
     push( @pieces, "." ) if( ! @pieces );
     my $dirname = join("/",@pieces);
     #return undef if( ! -d $dirname && ! system("mkdir -p '$dirname'") );
-    system("mkdir -p '$dirname'") if( ! -d $dirname );
+    #system("mkdir -p '$dirname'") if( ! -d $dirname );
+    &mkdirp( 0775, $dirname ) if( ! -d $dirname );
     open( OUT, "$openfnc $fn" ) 
         || &autopsy("Cannot $openfnc to ${fn}:  $!");
     binmode OUT;		# Avoid "Wide character in print" error messages
@@ -5144,7 +5147,8 @@ sub export_all
     foreach my $distributor_ind ( &DBget("Distributor") )
         {
 	my $prefix = join("/",$export_dir,&filename_of($distributor_ind));
-	&echodo("mkdir -p $prefix") if( ! -d $prefix );
+	#&echodo("mkdir -p $prefix") if( ! -d $prefix );
+	&mkdirp( 0775, $prefix ) if( ! -d $prefix );
 	foreach my $tbl ( "Distributor", "Staff", "Route" )
 	    {
 	    my @inds;
