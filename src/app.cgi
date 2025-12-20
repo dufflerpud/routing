@@ -105,8 +105,8 @@ our $FORMNAME		= "form";
 $cpi_vars::CACHEDIR 	= "$cpi_vars::BASEDIR/cache";
 my $DEST_DIR		= "routes";
 my $DEST_HTTP		= "%%WWWDIR%%/$DEST_DIR";
-$cpi_vars::DOMAIN	= "Brightsands.com";
-my $MAILSRC		= "routing\@$cpi_vars::DOMAIN";
+#$cpi_vars::DOMAIN	||= "Brightsands.com";
+#$cpi_vars::DAEMON_EMAIL		||= "$cpi_vars::PROG\@$cpi_vars::DOMAIN";
 #my $cpi_vars::BASE_URL		= "http://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
 #my $cpi_vars::BASES_URL		= "https://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
 #my $GOOGLE_KML		= "$cpi_vars::BASE_URL/google_kml.html";
@@ -2866,7 +2866,7 @@ sub do_one_route
     else
         {
 	&cpi_send_file::sendmail(
-	    $MAILSRC,
+	    $cpi_vars::DAEMON_EMAIL,
 	    $dest,
 	    "$route_name generated for $dest",
 	    $html_table );
@@ -3244,7 +3244,7 @@ sub dump_assessment
     if( $dest_type eq "to_email" && $staffind )
         {
 	my $notify = &DBget($staffind,"Notify");
-	my $emailsrc = "$distributorname router <$MAILSRC>";
+	my $emailsrc = "$distributorname router <$cpi_vars::DAEMON_EMAIL>";
 	&cpi_send_file::sendmail( $emailsrc, $notify,
 	    "Assessment to fill out",
 	    $contents );
@@ -3256,7 +3256,7 @@ sub dump_assessment
 	    "<center>",
 	    "<h1>XL(Form submitted, thank you!)</h1>",
 	    "<h2>XL(Results are in: )", $fullfilename, "</center>");
-	my $emailsrc = "$distributorname router <$MAILSRC>";
+	my $emailsrc = "$distributorname router <$cpi_vars::DAEMON_EMAIL>";
 	&cpi_send_file::sendmail( $emailsrc, "dufflerpud\@yahoo.com",
 	    "$patronname assessment completed by ".&DBget($staffind,"Name"),
 	    &read_file( $fullfilename ) );
@@ -3388,7 +3388,7 @@ sub dump_route
 	my $local_file = &setup_file("$local_dir/$secure_name",$request{data});
 	if( $mode eq "to_email" )
 	    {
-	    my $emailsrc = "$distributorname router <$MAILSRC>";
+	    my $emailsrc = "$distributorname router <$cpi_vars::DAEMON_EMAIL>";
 	    my $staffinds = &DBget( $tind, "Driver" );
 	    foreach my $staffind ( split(/,/,$staffinds) )
 		{
