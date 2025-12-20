@@ -107,13 +107,13 @@ my $DEST_DIR		= "routes";
 my $DEST_HTTP		= "%%WWWDIR%%/$DEST_DIR";
 $cpi_vars::DOMAIN	= "Brightsands.com";
 my $MAILSRC		= "routing\@$cpi_vars::DOMAIN";
-my $BASE_URL		= "http://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
-my $BASES_URL		= "https://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
-#my $GOOGLE_KML		= "$BASE_URL/google_kml.html";
-$cpi_vars::URL			= "$BASES_URL/$DEST_DIR";
-#our $PROG_URL		= $BASES_URL.($ENV{SCRIPT_NAME}||($cpi_vars::PROG.".cgi"));
-our $PROG_URL		= $BASES_URL."/index.cgi";
-$PROG_URL = $BASES_URL."/index-test.cgi" if(($ENV{SCRIPT_NAME}||"") =~ /-test/);
+#my $cpi_vars::BASE_URL		= "http://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
+#my $cpi_vars::BASES_URL		= "https://routing.$cpi_vars::DOMAIN$cpi_vars::OFFSET";
+#my $GOOGLE_KML		= "$cpi_vars::BASE_URL/google_kml.html";
+$cpi_vars::URL			= "$cpi_vars::BASES_URL/$DEST_DIR";
+#our $PROG_URL		= $cpi_vars::BASES_URL.($ENV{SCRIPT_NAME}||($cpi_vars::PROG.".cgi"));
+our $PROG_URL		= $cpi_vars::BASES_URL."/index.cgi";
+$PROG_URL = $cpi_vars::BASES_URL."/index-test.cgi" if(($ENV{SCRIPT_NAME}||"") =~ /-test/);
 my $PROJLONG		= "Routing";
 my $PROJECT		= "Routing";
 my $LOGDIR		= "/var/log/$PROJECT";
@@ -122,11 +122,11 @@ my $TRIPS_DIR		= "$LOGDIR/trips";
 my $HTML_DIR		= "$LOGDIR/html";
 my $PROGRESS_DIR	= "$LOGDIR/progress";
 my $ASSESSMENT_DIR	= "$LOGDIR/assessments";
-my $PROGRESS_URL	= "$BASE_URL/progress";
+my $PROGRESS_URL	= "$cpi_vars::BASE_URL/progress";
 my $DISABLED		= "$cpi_vars::BASEDIR/disabled.html";
 my $DISTRIBUTOR_DIR	= "$cpi_vars::BASEDIR/Distributors";
 my $EXPECTED_DIR	= "$LOGDIR/expected";
-my $EXPECTED_URL	= "$BASE_URL/expected";
+my $EXPECTED_URL	= "$cpi_vars::BASE_URL/expected";
 my $INDENT_JSON		= "/usr/local/bin/indent_json";
 my $INVOICES_DIR	= "$cpi_vars::BASEDIR/invoices";
 my $DISTUSER_TO_PDF	= "$cpi_vars::BASEDIR/bin/distuser_to_pdf";
@@ -140,7 +140,7 @@ my $WKHTMLTOPDF		= "/usr/local/bin/wkhtmltopdf";
 my $COSTSDIR		= $cpi_vars::BASEDIR."/costs";
 
 my $EXIT_FILE		= $cpi_vars::BASEDIR."/exit_reason.txt";
-my $FORM_URL		= "$BASES_URL/forms";
+my $FORM_URL		= "$cpi_vars::BASES_URL/forms";
 my $FORM_DIR		= "%%%WWWDIR%%/forms";
     
 # This used to decode FORM{progress} everytime the driver's
@@ -3214,7 +3214,7 @@ sub dump_assessment
 		. "," . &hashof($contents).".html";
         $fullfilename = $FORM_DIR."/".$filename;
 	my $todo = " to fill out assent form for $patronname";
-	my $live_url = join("/",$BASES_URL,"forms",$filename);
+	my $live_url = join("/",$cgi_vars::BASES_URL,"forms",$filename);
 	$live_url_txt = join("",
 	    "<div class=no-print>",
 	    "<a href='$live_url'>Click</a> $todo",
@@ -3380,7 +3380,7 @@ sub dump_route
 
 	my $live_url = join("/",$cpi_vars::URL,$distributorfilename,$secure_name);
 	my $live_qrcode = &cpi_qrcode_of::qrcode_of( $live_url, {encoding=>"image"} );
-	my $help_qrcode = &cpi_qrcode_of::qrcode_of( "$BASES_URL/help/Driver.cgi", {encoding=>"image"} );
+	my $help_qrcode = &cpi_qrcode_of::qrcode_of( "$cgi_vars::BASES_URL/help/Driver.cgi", {encoding=>"image"} );
 	$request{data} =~ s/%%LIVE_JAVASCRIPT%%/onLoad='setup_page();'/gms;
 	$request{data} =~ s/%%LIVE_URL%%/$live_url/gms;
 	$request{data} =~ s/%%LIVE_QRCODE%%/$live_qrcode/gms;
@@ -4464,7 +4464,7 @@ EOF
 	"</td></tr>\n" );
 
     push( @ret, "</table>\n",
-		"<a target=completed_route_map href='$BASES_URL?",
+		"<a target=completed_route_map href='$cpi_vars::BASES_URL?",
 		    "func=map_with_custom_header&arg=",
 		    join(':',
 			$input_p->{distributor}||"UNDEF",
