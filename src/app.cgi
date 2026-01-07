@@ -1667,6 +1667,12 @@ EOF
 	}
 
     push( @toprint,
+        "<span id=notify_screen_id style='display:none'>",
+	"<table><tr><th><input type=text name=notify_subject placeholder='XL(Subject)'>",
+	"<tr><th><textarea rows=20 cols=40 name=notify_message placeholder='XL(Message)'></textarea></th></tr>",
+	"<tr><th>",
+	"<input type=button value='XL(Send)' onClick='submit_func(\"$here/notify_with_normal_header\");'>",
+	"<input type=button value='XL(Cancel)' onClick='setdisplay(\"record_screen_id\",1);setdisplay(\"notify_screen_id\",0);'></th></tr></table></span>\n",
 	"<span id=record_screen_id>",
 	"<table border=1 cellspacing=1 cellpadding=5 style='border-collapse:collapse;border:solid;'>\n" );
     my %could = ( update=>0, edit=>0 );
@@ -2237,6 +2243,9 @@ sub make_stop
 	$stop{$stop_name}{addrtxt} =
 	    ( $stop{$stop_name}{address} =~ /(.*),US$/
 	    ? $1 : $stop{$stop_name}{address} );
+	$stop{$stop_name}{addrtxt} =
+	    ( $stop{$stop_name}{addrtxt} =~ /(.*?),(.*)$/
+	    ? "$1<br><font size=-1>$2</font>" : $stop{$stop_name}{addrtxt} );
 	$stop{$stop_name}{distributor}	= &DBget($ind,"?");
 	$stop{$stop_name}{coords}	= &DBget($ind,"Coords");
 	my $foodprefs = &DBget($ind,"FoodPrefs");
@@ -3270,6 +3279,34 @@ sub dump_assessment
     }
 
 #########################################################################
+#	Create a assessment form from a template.			#
+#########################################################################
+sub do_notify
+    {
+    my( $fnc, $tbl, $ind ) = @_;
+    my @indlist = &get_patron_order( $ind );
+    my $distributorname = &DBget($indlist[0],"Name");
+    my @msg = ( "<table>" );
+    my $emailsrc = "$distributorname router <$cpi_vars::DAEMON_EMAIL>";
+    foreach my $destind ( &get_patron_order($ind) )
+        {
+	my $name = &DBget( $destind, "Name" );
+	my $notify = &DBget( $destind, "Notify" );
+	my $status = &DBget( $destind, "Status" );
+	if( $name && $notify && ($status eq "Active") )
+	    {
+	    &cpi_send_file::sendmail( $emailsrc, $notify,
+	        $cpi_vars::FORM{notify_subject},
+		$cpi_vars::FORM{notify_message} );
+	    push( @msg, "<tr><td>Email send to $name ($notify).</td></tr>" );
+	    }
+	}
+    push(@msg,"</table>");
+    my $log = join("",@msg);
+    return $log;
+    }
+
+#########################################################################
 #	Dump the route in a useful format.				#
 #########################################################################
 sub dump_route
@@ -3682,11 +3719,11 @@ sub routing_select
     {
     my( $tbl, $what, $pretty_text, $staffinds ) = @_;
     my $cap_pretty_text = ucfirst( $pretty_text );
-    my @to_print;
-    my @toprint =
-	( "<select",
+    my @toprint;
+    push( @toprint,
+	"<select",
 	" help='select_$cap_pretty_text'",
-	" onChange='submit_func(this.value,\"$tbl\");this.selectedIndex=0;'>",
+	" onChange='if( /notify_with/.test(this.value) ) {setdisplay(\"notify_screen_id\",1);setdisplay(\"record_screen_id\",0);} else { submit_func(this.value,\"$tbl\"); } this.selectedIndex=0;'>",
 	"<option selected>XL(".ucfirst($cap_pretty_text),
 	#" (tbl=$tbl what=$what)",
 	")</option>" );
@@ -3701,6 +3738,12 @@ sub routing_select
 	#if( $tbl ne "Patron" );
 	if( &inlist( $what, "stickers", "vcf", "assessment" ) );
 	#if( $what eq "stickers" || $what eq "vcf" );
+
+    push( @toprint,
+	"<option value='$here/notify_with_normal_header'>",
+	"XL(Notify $pretty_text)</option>" )
+	if( $pretty_text eq "contacts" );
+
     if( $staffinds )
 	{
 	my %staff_todos;
@@ -4102,13 +4145,15 @@ sub interactive_handler
 	    "</body></html>" );
 	&cleanup( 0 );
         }
-    elsif( $fnc =~ /(assessment|stickers|vcf|html)_(with_custom_header|with_normal_header|to_email)/ )
+    elsif( $fnc =~ /(assessment|stickers|vcf|html|notify)_(with_custom_header|with_normal_header|to_email)/ )
     #elsif( &inlist( $fnc, "stickers_with_custom_header", "vcf_with_custom_header", "vcf_to_email", "html_with_custom_header", "html_to_email" ) )
 	{
 	print STDERR "Calling dump_*(",$fnc||"UNDEF",",",$tbl||"UNDEF",",",$ind||"UNDEF",")\n";
 	$msg =
 	    ( $1 eq "assessment"
 	    ? &dump_assessment($fnc,$prevtbl,$prevind)
+	    : $1 eq "notify"
+	    ? &do_notify($fnc,$prevtbl,$prevind)
 	    : &dump_route($fnc,$tbl,$ind) );
 	print STDERR "Calling interactive_handler( ",$msg||"UNDEF", join(",",@so_far), " )\n";
 	&interactive_handler( $msg, @so_far );
