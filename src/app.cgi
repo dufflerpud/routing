@@ -1666,13 +1666,55 @@ EOF
 #	    "</a></span></center>\n" );
 	}
 
+    if( $args{tbl} eq "Route" )
+	{
+	push( @toprint,
+	    "<span id=notify_screen_id style='display:none'>",
+	    "<table><tr><th><input type=text help=notify_subject name=notify_subject placeholder='XL(Subject)'>",
+	    "<tr><th><textarea rows=20 cols=40 help=notify_message name=notify_message placeholder='XL(Message)'></textarea></th></tr>",
+	    "<tr><th><table><tr><th>XL(Person)</th><th>Notify</th></tr>" );
+	foreach my $destind ( &get_patron_order( $args{ind} ) )
+	    {
+	    if( $destind =~ /^P_/ )
+		{
+		my @problems;
+
+		my $name = &DBget( $destind, "Name" );
+		if( ! $name )
+		    {
+		    $name = $destind;
+		    push(@problems,"No associated name.");
+		    }
+
+		my $status = &DBget( $destind, "Status" ) || "UNDEF";
+		push(@problems,"Status is $status (not Active).")
+		    if( $status ne "Active" );
+
+		my $notify = &DBget( $destind, "Notify" );
+		push(@problems,"Notify is not set.") if( ! $notify );
+
+		push(@toprint, "<tr><th align=left>$name</th>");
+		if( @problems )
+		    {
+		    push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
+		    }
+		else
+		    {
+		    push( @toprint,
+			"<td>",
+			"<input type=checkbox name=notify_inds checked value=",
+			$destind, ">" );
+		    }
+		push( @toprint, "</td></tr>" );
+		}
+	    }
+	push( @toprint,
+	    "</table></th></tr>",
+	    "<tr><th>",
+	    "<input type=button value='XL(Send)' onClick='submit_func(\"$here/notify_with_normal_header\");'>",
+	    "<input type=button value='XL(Cancel)' onClick='setdisplay(\"record_screen_id\",1);setdisplay(\"notify_screen_id\",0);'></th></tr></table></span>\n" );
+	}
     push( @toprint,
-        "<span id=notify_screen_id style='display:none'>",
-	"<table><tr><th><input type=text name=notify_subject placeholder='XL(Subject)'>",
-	"<tr><th><textarea rows=20 cols=40 name=notify_message placeholder='XL(Message)'></textarea></th></tr>",
-	"<tr><th>",
-	"<input type=button value='XL(Send)' onClick='submit_func(\"$here/notify_with_normal_header\");'>",
-	"<input type=button value='XL(Cancel)' onClick='setdisplay(\"record_screen_id\",1);setdisplay(\"notify_screen_id\",0);'></th></tr></table></span>\n",
 	"<span id=record_screen_id>",
 	"<table border=1 cellspacing=1 cellpadding=5 style='border-collapse:collapse;border:solid;'>\n" );
     my %could = ( update=>0, edit=>0 );
@@ -3284,26 +3326,50 @@ sub dump_assessment
 sub do_notify
     {
     my( $fnc, $tbl, $ind ) = @_;
-    my @indlist = &get_patron_order( $ind );
-    my $distributorname = &DBget($indlist[0],"Name");
-    my @msg = ( "<table>" );
+    my @all_on_route = &get_patron_order($ind);
+    my $distributorname = &DBget($all_on_route[0],"Name");
     my $emailsrc = "$distributorname router <$cpi_vars::DAEMON_EMAIL>";
-    foreach my $destind ( &get_patron_order($ind) )
+    my @indlist =
+	( $cpi_vars::FORM{notify_inds}
+	? split(/,/,$cpi_vars::FORM{notify_inds})
+	: &get_patron_order($ind) );
+
+    my @msgs;
+    foreach my $destind ( @indlist )
         {
-	my $name = &DBget( $destind, "Name" );
+	my @problems;
+	my $name = $destind;
+
+	if( ! &inlist( $destind, @all_on_route ) )
+	    { push(@problems,"\"$destind\" is not on the route."); }
+	elsif( ! ( $name = &DBget( $destind, "Name" ) ) )
+	    {
+	    $name = $destind;
+	    push(@problems,"No associated name.");
+	    }
+
+	my $status = &DBget( $destind, "Status" ) || "UNDEF";
+	push(@problems,"Status is $status (not Active).")
+	    if( $status ne "Active" );
+
 	my $notify = &DBget( $destind, "Notify" );
-	my $status = &DBget( $destind, "Status" );
-	if( $name && $notify && ($status eq "Active") )
+	push(@problems,"Notify is not set.") if( ! $notify );
+
+	push(@msgs, "<tr><th align=left>$name</th>");
+	if( @problems )
+	    {
+	    push( @msgs, "<td bgcolor=red>",
+		join("<br>",@problems), "</td></tr>" );
+	    }
+	else
 	    {
 	    &cpi_send_file::sendmail( $emailsrc, $notify,
 	        $cpi_vars::FORM{notify_subject},
 		$cpi_vars::FORM{notify_message} );
-	    push( @msg, "<tr><td>Email send to $name ($notify).</td></tr>" );
+	    push(@msgs, "<td>Notified via $notify.</td></tr>");
 	    }
 	}
-    push(@msg,"</table>");
-    my $log = join("",@msg);
-    return $log;
+    return join("","<table>",@msgs,"</table>");
     }
 
 #########################################################################
