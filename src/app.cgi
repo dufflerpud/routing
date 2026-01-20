@@ -1673,39 +1673,42 @@ EOF
 	    "<table><tr><th><input type=text help=notify_subject name=notify_subject placeholder='XL(Subject)'>",
 	    "<tr><th><textarea rows=20 cols=40 help=notify_message name=notify_message placeholder='XL(Message)'></textarea></th></tr>",
 	    "<tr><th><table><tr><th>XL(Person)</th><th>Notify</th></tr>" );
-	foreach my $destind ( &get_patron_order( $args{ind} ) )
+	if( $current_route )
 	    {
-	    if( $destind =~ /^P_/ )
+	    foreach my $destind ( &get_patron_order( $args{ind} ) )
 		{
-		my @problems;
-
-		my $name = &DBget( $destind, "Name" );
-		if( ! $name )
+		if( $destind =~ /^P_/ )
 		    {
-		    $name = $destind;
-		    push(@problems,"No associated name.");
-		    }
+		    my @problems;
 
-		my $status = &DBget( $destind, "Status" ) || "UNDEF";
-		push(@problems,"Status is $status (not Active).")
-		    if( $status ne "Active" );
+		    my $name = &DBget( $destind, "Name" );
+		    if( ! $name )
+			{
+			$name = $destind;
+			push(@problems,"No associated name.");
+			}
 
-		my $notify = &DBget( $destind, "Notify" );
-		push(@problems,"Notify is not set.") if( ! $notify );
+		    my $status = &DBget( $destind, "Status" ) || "UNDEF";
+		    push(@problems,"Status is $status (not Active).")
+			if( $status ne "Active" );
 
-		push(@toprint, "<tr><th align=left>$name</th>");
-		if( @problems )
-		    {
-		    push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
+		    my $notify = &DBget( $destind, "Notify" );
+		    push(@problems,"Notify is not set.") if( ! $notify );
+
+		    push(@toprint, "<tr><th align=left>$name</th>");
+		    if( @problems )
+			{
+			push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
+			}
+		    else
+			{
+			push( @toprint,
+			    "<td>",
+			    "<input type=checkbox name=notify_inds checked value=",
+			    $destind, ">" );
+			}
+		    push( @toprint, "</td></tr>" );
 		    }
-		else
-		    {
-		    push( @toprint,
-			"<td>",
-			"<input type=checkbox name=notify_inds checked value=",
-			$destind, ">" );
-		    }
-		push( @toprint, "</td></tr>" );
 		}
 	    }
 	push( @toprint,
