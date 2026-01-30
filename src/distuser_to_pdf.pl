@@ -104,7 +104,6 @@ sub do_it
     print STDERR "Looking for [$l4] in [$fnames{trips}]\n";
     foreach my $trips_file ( &files_in($fnames{trips},"\\d\\d\\d\\d-\\d\\d-\\d\\d.*") )
 	{
-	print STDERR "l4=$l4 trips_file=$trips_file.\n";
 	next if( $l4 && $trips_file !~ /^$l4/ );
 	print STDERR "Processing $fnames{trips}/$trips_file.\n" if( 1 || $ARGS{verbosity} );
 	&echodo(
