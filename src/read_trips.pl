@@ -13,7 +13,7 @@
 use lib "/usr/local/lib/perl";
 
 use cpi_db qw( DBget DBread DBclose );
-use cpi_file qw( fatal echodo cleanup );
+use cpi_file qw( fatal echodo cleanup read_file read_lines );
 use cpi_filename qw( filename_to_text text_to_filename );
 use cpi_inlist qw( inlist );
 use cpi_setup qw( setup );
@@ -151,15 +151,8 @@ sub filter
 	&DBclose();
 	}
 
-    open( INF, "$cpi_vars::BASEDIR/Distributors/$ARGS{distributor}/invoice.pl" )
-	|| &fatal("Cannot read $cpi_vars::BASEDIR/Distributors/$ARGS{distributor}/invoice.pl:  $!");
-    my $PAGE_CONTENTS = join("",<INF>);
-    close( INF );
-
-    open( INF, $ARGS{input_file} ) || &fatal("Cannot read $ARGS{input_file}:  $!");
-
-    &fatal("Cannot write $ARGS{log_file}:  $!")
-        if( $ARGS{log_file} && ! open(OUT,">$ARGS{log_file}") );
+    my $PAGE_CONTENTS = &read_file(
+	"$cpi_vars::BASEDIR/Distributors/$ARGS{distributor}/invoice.pl" );
 
     foreach $_ ( split(/,/,$ARGS{rate}) )
 	{
@@ -172,11 +165,13 @@ sub filter
 	    }
 	}
 
+    &fatal("Cannot write $ARGS{log_file}:  $!")
+        if( $ARGS{log_file} && ! open(OUT,">$ARGS{log_file}") );
+
     my @chart_data = ();
-    while( $_ = <INF> )
+    foreach my $line ( &read_lines($ARGS{input_file}) )
         {
-	s/[\r\n]//g;
-	my ($dt,$da,$de,$diststring,$townlist) = split(/\t+/);
+	my ($dt,$da,$de,$diststring,$townlist) = split(/\t+/,$line);
 	my( $distance, $stype ) =
 	    ( $diststring =~ /^([0-9\.]+)@([A-Za-z].+)/
 	    ? ($1,$2)
@@ -221,7 +216,6 @@ sub filter
 	my $lll = $total_elapsed_per_category{$stype};
 	#my $lll = 123;
 	}
-    close( INF );
     close( OUT ) if( $ARGS{log_file} );
 
     foreach my $stype ( keys %total_distance_per_category )
