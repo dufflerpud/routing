@@ -11,14 +11,16 @@
 #@HDR@	it is furnished.
 
 use lib "/usr/local/lib/perl";
-#package main;
-use cpi_db;
-use cpi_file;
-use cpi_filename;
-use cpi_inlist;
-use cpi_setup;
+
+use cpi_db qw( DBget DBread DBclose );
+use cpi_file qw( fatal echodo cleanup );
+use cpi_filename qw( filename_to_text text_to_filename );
+use cpi_inlist qw( inlist );
+use cpi_setup qw( setup );
+use cpi_arguments qw( parse_arguments );
 use cpi_vars;
-&cpi_setup::setup();
+
+&setup();
 
 use strict;
 
@@ -33,8 +35,6 @@ my $EMBED_IMAGES	= "$cpi_vars::BASEDIR/bin/embed_images";
 my $CONVERT		= "/usr/local/bin/nene";
 my $WKHTMLTOPDFBIN	= "/usr/local/bin/wkhtmltopdf";
 my $WKHTMLTOPDFCMD	= "$WKHTMLTOPDFBIN --log-level none";
-#my $WKHTMLTOPDFCMD	= $WKHTMLTOPDFBIN;
-#my $STANDARD_ROUTES	= "lib/standard_routes";
 my $TO_MOW		= "Unknown";
 
 my %EXTMAP		= ( "pdf"=>"o", "trips"=>"i", "htm"=>"h", "html"=>"h" );
@@ -44,26 +44,24 @@ my $TABLE_ARGS		= <<EOF;
     width=100% cellspacing=2 cellpadding=2
 EOF
 
-my %ONLY_ONE_DEFAULTS =
+our %ONLY_ONE_DEFAULTS =
     (
-    "r"	=>	"",
-    "i"	=>	"/dev/stdin",
-    "h"	=>	"$cpi_vars::BASEDIR/public_html/mow.html",
-    "o"	=>	"/dev/stdout",
-    "d"	=>	"MOW",
-    "u"	=>	"Unknown driver",	# Unused
-    "a" =>	"0.00",
-    "f"	=>	"",
-    "V" =>	0.05,		# 5%
-    "v"	=>	""
+    "rate"		=>	"",
+    "input_file"	=>	"/dev/stdin",
+    "html_file"		=>	"$cpi_vars::BASEDIR/public_html/mow.html",
+    "output_file"	=>	"/dev/stdout",
+    "distributor"	=>	"MOW",
+    "user"		=>	"Unknown driver",	# Unused
+    "add_to_distance"	=>	"0.00",
+    "log_file"		=>	"",
+    "verbosity"		=>	"0"
     );
 
 # Put variables here.
 
-my @problems;
-my %ARGS;
-my @files;
-#my %standard_routes;
+our @problems;
+our %ARGS;
+our @files;
 
 # Put interesting subroutines here
 
@@ -72,7 +70,7 @@ my @files;
 #########################################################################
 sub usage
     {
-    &cpi_file::fatal( join("\n", @_, "",
+    &fatal( join("\n", @_, "",
 	"Usage:  $cpi_vars::PROG <possible arguments>","",
 	"where <possible arguments> is:",
 	"    -i <trip file>",
@@ -83,66 +81,6 @@ sub usage
 	"    -t <template containing look and feel>",
 	"    -r <rate_string>"
 	), 0 );
-    }
-
-#########################################################################
-#	Parse the arguments						#
-#########################################################################
-sub parse_arguments
-    {
-    my $arg;
-    while( defined($arg = shift(@ARGV) ) )
-	{
-	# Put better argument parsing here.
-
-	if( $arg =~ /^-(.)(.*)$/ && defined($ONLY_ONE_DEFAULTS{$1}) )
-	    {
-	    if( defined($ARGS{$1}) )
-		{ push( @problems, "-$1 specified multiple times." ); }
-	    else
-		{ $ARGS{$1} = ( $2 ne "" ? $2 : shift(@ARGV) ); }
-	    }
-	elsif( $arg =~ /^-(t)(.*)$/ )
-	    {
-	    my $val = ( $2 ? $2 : shift(@ARGV) );
-	    if( $#files <= 0 )
-	        {
-		if( defined($files[$#files]->{$1}) )
-		    {
-		    push( @problems,
-			$files[$#files]->{name} .
-			    " -$1 specified multiple times." );
-		    }
-		else
-		    { $files[$#files]->{$1} = $val; }
-		}
-	    elsif( defined( $ARGS{$1} ) )
-		{ push( @problems, "-$1 specified multiple times." ); }
-	    else
-		{ $ARGS{$1} = $val; }
-	    }
-	elsif( $arg =~ /^-.*/ )
-	    { push( @problems, "Unknown argument 1 [$arg]" ); }
-	elsif( $arg =~ /.*\.([a-z]+)$/ && defined($EXTMAP{$1}) )
-	    {
-	    if( $ARGS{$EXTMAP{$1}} )
-	        { push(@problems,
-		    "-$EXTMAP{$1} already specified multiple times." ); }
-	    else
-	        { $ARGS{$EXTMAP{$1}} = $arg; }
-	    }
-	else
-	    #{ push( @files, { name=>$arg, title=>&file_to_name($arg) } ); }
-	    { push(@problems,"Unknown argument 2 [$arg]."); }
-	}
-
-    #push( @problems, "No files specified" ) if( ! @files );
-    &usage( @problems ) if( @problems );
-
-    # Put interesting code here.
-
-    grep( $ARGS{$_}=(defined($ARGS{$_})?$ARGS{$_}:$ONLY_ONE_DEFAULTS{$_}),
-	keys %ONLY_ONE_DEFAULTS );
     }
 
 #########################################################################
@@ -162,16 +100,16 @@ sub standardize_route
 sub map_name_to_ind
     {
     my( $table, $name, $retval ) = @_;
-    foreach my $ind ( &cpi_db::dbget($cpi_vars::DB,$table) )	# Who doesn't like a nice linear search?
+    foreach my $ind ( &DBget($table) )	# Who doesn't like a nice linear search?
 	{
-	my $checkname = &cpi_db::dbget($cpi_vars::DB, $ind, "Name" );
+	my $checkname = &DBget( $ind, "Name" );
 
 	return $ind
 	    if( $checkname eq $name
-	     || &cpi_filename::text_to_filename($checkname) eq $name );
+	     || &text_to_filename($checkname) eq $name );
 	}
     return $retval if( defined($retval) );
-    &cpi_file::fatal("Cannot map $name to an index in the $table table.");
+    &fatal("Cannot map $name to an index in the $table table.");
     }
 
 
@@ -180,18 +118,6 @@ sub map_name_to_ind
 #########################################################################
 sub filter
     {
-#    open( INF, $STANDARD_ROUTES ) || &cpi_file::fatal("Cannot read ${STANDARD_ROUTES}:  $!");
-#    while( $_ = <INF> )
-#        {
-#	chomp( $_ );
-#	my( $dist, $routestr ) = split(/\t+/);
-#	$standard_routes{ &standardize_route( $routestr ) } = $dist;
-#	}
-#    close( INF );
-#
-##    foreach $_ ( sort keys %standard_routes )
-##	{ print "Dist=$standard_routes{$_} [$_]\n"; }
-
     my %total_elapsed_per_category;
     my %total_distance_per_category;
     my %total_cost_per_category;
@@ -203,40 +129,39 @@ sub filter
     my $donation_maximum;
     my $ncolumns =
 	(
-	&cpi_inlist::inlist( $ARGS{d},
+	&inlist( $ARGS{distributor},
 	    "MOW_Sagadahoc",
 	    "MOW_Lincoln",
 	    "MOW_Cohen_Community_Center" )
 	    ? 6
 	    : 8
 	);
-    if( ! $ARGS{r} || $ARGS{r} !~ /\d/ )
+    if( ! $ARGS{rate} || $ARGS{rate} !~ /\d/ )
 	{
-	&cpi_db::dbread( $cpi_vars::DB ) || &cpi_file::fatal("Cannot opendb($cpi_vars::DB):  $!");
-	my $distributor_ind = &map_name_to_ind( "Distributor", $ARGS{d} );
-	my $staff_ind = &map_name_to_ind( "Staff", $ARGS{u} );
-	$ARGS{r} =
-	    &cpi_db::dbget( $cpi_vars::DB, $distributor_ind, "Reimbursement" );
+	&DBread() || &fatal("Cannot opendb($cpi_vars::DB):  $!");
+	my $distributor_ind = &map_name_to_ind( "Distributor", $ARGS{distributor} );
+	my $staff_ind = &map_name_to_ind( "Staff", $ARGS{user} );
+	$ARGS{rate} = &DBget( $distributor_ind, "Reimbursement" );
 	$donation_percentage =
-	    &cpi_db::dbget( $cpi_vars::DB, $staff_ind, "Donation_percentage" )
+	    &DBget( $staff_ind, "Donation_percentage" )
 	    || 0;
 	$donation_maximum =
-	    &cpi_db::dbget( $cpi_vars::DB, $staff_ind, "Donation_maximum" )
+	    &DBget( $staff_ind, "Donation_maximum" )
 	    || 0;
-	&cpi_db::dbclose( $cpi_vars::DB );
+	&DBclose();
 	}
 
-    open( INF, "$cpi_vars::BASEDIR/Distributors/$ARGS{d}/invoice.pl" )
-	|| &cpi_file::fatal("Cannot read $cpi_vars::BASEDIR/Distributors/$ARGS{d}/invoice.pl:  $!");
+    open( INF, "$cpi_vars::BASEDIR/Distributors/$ARGS{distributor}/invoice.pl" )
+	|| &fatal("Cannot read $cpi_vars::BASEDIR/Distributors/$ARGS{distributor}/invoice.pl:  $!");
     my $PAGE_CONTENTS = join("",<INF>);
     close( INF );
 
-    open( INF, $ARGS{i} ) || &cpi_file::fatal("Cannot read $ARGS{i}:  $!");
+    open( INF, $ARGS{input_file} ) || &fatal("Cannot read $ARGS{input_file}:  $!");
 
-    &cpi_file::fatal("Cannot write $ARGS{f}:  $!")
-        if( $ARGS{f} && ! open(OUT,">$ARGS{f}") );
+    &fatal("Cannot write $ARGS{log_file}:  $!")
+        if( $ARGS{log_file} && ! open(OUT,">$ARGS{log_file}") );
 
-    foreach $_ ( split(/,/,$ARGS{r}) )
+    foreach $_ ( split(/,/,$ARGS{rate}) )
 	{
 	if( $_ !~ /(.*)=(.*)/ )
 	    { print STDERR "Ignoring rate [$_].\n"; }
@@ -260,9 +185,9 @@ sub filter
             { $dt = sprintf("%04d-%02d-%02d",$3,$1,$2) }
 	elsif( $dt =~ m:(20\d\d)(\d\d)(\d\d): )
             { $dt = sprintf("%04d-%02d-%02d",$1,$2,$3) }
-	$distance = sprintf("%.1f",$distance+$ARGS{a});
+	$distance = sprintf("%.1f",$distance+$ARGS{add_to_distance});
 	$diststring = $distance.$stype;
-	print OUT "$dt\t$da\t$diststring\t$townlist\n" if( $ARGS{f} );
+	print OUT "$dt\t$da\t$diststring\t$townlist\n" if( $ARGS{log_file} );
 	my $othercost = 0;
 	print STDERR "distance=",($distance||"UNDEF"),
 		" stype=",($stype||"UNDEF"),
@@ -297,14 +222,14 @@ sub filter
 	#my $lll = 123;
 	}
     close( INF );
-    close( OUT ) if( $ARGS{f} );
+    close( OUT ) if( $ARGS{log_file} );
 
     foreach my $stype ( keys %total_distance_per_category )
 	{
 	next if( ! $total_distance_per_category{$stype} );
 	$total_cost_per_category{$stype} = sprintf( "%.2f", $total_cost_per_category{$stype} );
 	if( $ncolumns == 6 )
-	    { push( @chart_data, "<tr><th>".&cpi_filename::filename_to_text(${stype})." totals</th>",
+	    { push( @chart_data, "<tr><th>".&filename_to_text(${stype})." totals</th>",
 		"<td align=right>",
 		    sprintf("%d:%02d",$total_elapsed_per_category{$stype}/60,$total_elapsed_per_category{$stype}%60),"</td>",
 		"<td></td>",
@@ -331,15 +256,15 @@ sub filter
     my $net_request = sprintf("%.2f",$total_cost - $donation);
     my $page = eval( $PAGE_CONTENTS );
     #print "Error was [$@]\n";
-    #print STDERR "errmessage=[$@]\n" if( $ARGS{v} );
+    #print STDERR "errmessage=[$@]\n" if( $ARGS{verbosity} );
 
-    open( OUT, "| $EMBED_IMAGES > $ARGS{h}" )
-	|| &cpi_file::fatal("Cannot write $ARGS{h}:  $!");
+    open( OUT, "| $EMBED_IMAGES > $ARGS{html_file}" )
+	|| &fatal("Cannot write $ARGS{html_file}:  $!");
     print OUT $page;
     close( OUT );
 
-    #&cpi_file::echodo("$CONVERT $ARGS{h} $ARGS{o}");
-    &cpi_file::echodo("$WKHTMLTOPDFCMD $ARGS{h} $ARGS{o}");
+    #&echodo("$CONVERT $ARGS{html_file} $ARGS{output_file}");
+    &echodo("$WKHTMLTOPDFCMD $ARGS{html_file} $ARGS{output_file}");
     }
 
 #########################################################################
@@ -347,9 +272,10 @@ sub filter
 #########################################################################
 
 &parse_arguments();
+$cpi_vars::VERBOSITY = $ARGS{verbosity};
 
 #print join("\n\t","Args:",map{"$_:\t$ARGS{$_}"} sort keys %ARGS), "\n";
 
 &filter();
 
-&cpi_file::cleanup(0);
+&cleanup(0);
