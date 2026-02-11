@@ -1,14 +1,35 @@
 #!/usr/local/bin/perl -w
+#
+#indx#	distuser_to_pdf.pl - Generate pdf expense report from trip entries
 #@HDR@	$Id$
-#@HDR@		Copyright 2024 by
-#@HDR@		Christopher Caldwell/Brightsands
-#@HDR@		P.O. Box 401, Bailey Island, ME 04003
-#@HDR@		All Rights Reserved
 #@HDR@
-#@HDR@	This software comprises unpublished confidential information
-#@HDR@	of Brightsands and may not be used, copied or made available
-#@HDR@	to anyone, except in accordance with the license under which
-#@HDR@	it is furnished.
+#@HDR@	Copyright (c) 2024-2026 Christopher Caldwell (Christopher.M.Caldwell0@gmail.com)
+#@HDR@
+#@HDR@	Permission is hereby granted, free of charge, to any person
+#@HDR@	obtaining a copy of this software and associated documentation
+#@HDR@	files (the "Software"), to deal in the Software without
+#@HDR@	restriction, including without limitation the rights to use,
+#@HDR@	copy, modify, merge, publish, distribute, sublicense, and/or
+#@HDR@	sell copies of the Software, and to permit persons to whom
+#@HDR@	the Software is furnished to do so, subject to the following
+#@HDR@	conditions:
+#@HDR@	
+#@HDR@	The above copyright notice and this permission notice shall be
+#@HDR@	included in all copies or substantial portions of the Software.
+#@HDR@	
+#@HDR@	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+#@HDR@	KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+#@HDR@	WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+#@HDR@	AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#@HDR@	HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#@HDR@	WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#@HDR@	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#@HDR@	OTHER DEALINGS IN THE SOFTWARE.
+#
+#hist#	2026-02-10 - Christopher.M.Caldwell0@gmail.com - Created
+########################################################################
+#doc#	distuser_to_pdf.pl - Generate pdf expense report from trip entries
+########################################################################
 
 use strict;
 
@@ -121,6 +142,21 @@ sub do_it
 
     if( ! @pdfs )
         { &fatal("No expenses/trips to report for $ARGS{distributor}."); }
+    elsif( $ARGS{output}=~/^sign:(.*):(.*)/ || $ARGS{output}=~/^sign:(.*)/ )
+        {
+	my $sign_user = $1;
+	my $mailto = $2;
+	&mkdirp( 0755, $ARGS{tempdir} );
+	my $filepiece = "$ARGS{distributor}-$ARGS{user}";
+	$filepiece .= "-$ARGS{month}" if( $ARGS{month} );
+	$filepiece .= "-log.pdf";
+	my $outfile = "$ARGS{tempdir}/".&text_to_filename($filepiece);
+        &echodo( "pdfunite",@pdfs,$outfile );
+	if( $mailto )
+	    { &echodo($SIGN,"handoff",&quotes($sign_user,$outfile,$mailto)); }
+	else
+	    { &echodo($SIGN,"handoff",&quotes($sign_user,$outfile)); }
+	}
     elsif( $ARGS{output} =~ /\@/ )
 	{
 	my $outfile = &tempfile(".pdf");
@@ -130,17 +166,6 @@ sub do_it
 	$msg =~ s/_+/ /g;
 	&sendmail( "$PROJECT\@$cpi_vars::DOMAIN",$ARGS{output},$msg,
 	    "$msg in enclosed PDF file.\n", $outfile );
-	}
-    elsif( $ARGS{output} =~ /^sign:(.*)/ )
-        {
-	my $sign_user = $1;
-	&mkdirp( 0755, $ARGS{tempdir} );
-	my $filepiece = "$ARGS{distributor}-$ARGS{user}";
-	$filepiece .= "-$ARGS{month}" if( $ARGS{month} );
-	$filepiece .= "-log.pdf";
-	my $outfile = "$ARGS{tempdir}/".&text_to_filename($filepiece);
-        &echodo( "pdfunite",@pdfs,$outfile );
-	&echodo( $SIGN, "handoff", &quotes($sign_user,$outfile) );
 	}
     else
         { &echodo( join(" ","pdfunite",@pdfs,$ARGS{output}) ); }

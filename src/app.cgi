@@ -1,23 +1,39 @@
 #!/usr/bin/perl -w
+#
+#indx#	app.cgi - Main routing application web interface for meal delivery service
 #@HDR@	$Id: app.cgi,v 1.1 2020/08/12 21:17:31 chris Exp chris $
-#@HDR@		Copyright 2024 by
-#@HDR@		Christopher Caldwell/Brightsands
-#@HDR@		P.O. Box 401, Bailey Island, ME 04003
-#@HDR@		All Rights Reserved
 #@HDR@
-#@HDR@	This software comprises unpublished confidential information
-#@HDR@	of Brightsands and may not be used, copied or made available
-#@HDR@	to anyone, except in accordance with the license under which
-#@HDR@	it is furnished.
-#########################################################################
-#	routing.cgi							#
-#		2024-04-18	c.m.caldwell@alumni.unh.edu		#
-#									#
-#	Create routes for drivers for meal delivery service.		#
-#									#
-#	Tested with:							#
-#		Meals-on-wheels						#
-#		Harpswell Aging	at Home					#
+#@HDR@	Copyright (c) 2024-2026 Christopher Caldwell (Christopher.M.Caldwell0@gmail.com)
+#@HDR@
+#@HDR@	Permission is hereby granted, free of charge, to any person
+#@HDR@	obtaining a copy of this software and associated documentation
+#@HDR@	files (the "Software"), to deal in the Software without
+#@HDR@	restriction, including without limitation the rights to use,
+#@HDR@	copy, modify, merge, publish, distribute, sublicense, and/or
+#@HDR@	sell copies of the Software, and to permit persons to whom
+#@HDR@	the Software is furnished to do so, subject to the following
+#@HDR@	conditions:
+#@HDR@	
+#@HDR@	The above copyright notice and this permission notice shall be
+#@HDR@	included in all copies or substantial portions of the Software.
+#@HDR@	
+#@HDR@	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+#@HDR@	KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+#@HDR@	WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+#@HDR@	AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+#@HDR@	HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#@HDR@	WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#@HDR@	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+#@HDR@	OTHER DEALINGS IN THE SOFTWARE.
+#
+#hist#	2024-04-18 - c.m.caldwell@alumni.unh.edu - Created
+#hist#	2026-02-10 - Christopher.M.Caldwell0@gmail.com - Standard header
+########################################################################
+#doc#	app.cgi - Main routing application web interface for meal delivery service
+#doc#	Tested with:
+#doc#		Meals-on-wheels for Livermore/Farmington
+#doc#		Meals-on-wheels for Brunswick/Sagadahoc
+#doc#		Harpswell Aging at Home
 #########################################################################
 
 #########################################################################
