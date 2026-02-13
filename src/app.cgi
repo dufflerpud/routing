@@ -1689,42 +1689,39 @@ EOF
 	    "<table><tr><th><input type=text help=notify_subject name=notify_subject placeholder='XL(Subject)'>",
 	    "<tr><th><textarea rows=20 cols=40 help=notify_message name=notify_message placeholder='XL(Message)'></textarea></th></tr>",
 	    "<tr><th><table><tr><th>XL(Person)</th><th>Notify</th></tr>" );
-	if( $current_route )
+	foreach my $destind ( &get_patron_order( $args{ind} ) )
 	    {
-	    foreach my $destind ( &get_patron_order( $args{ind} ) )
+	    if( $destind =~ /^P_/ )
 		{
-		if( $destind =~ /^P_/ )
+		my @problems;
+
+		my $name = &DBget( $destind, "Name" );
+		if( ! $name )
 		    {
-		    my @problems;
-
-		    my $name = &DBget( $destind, "Name" );
-		    if( ! $name )
-			{
-			$name = $destind;
-			push(@problems,"No associated name.");
-			}
-
-		    my $status = &DBget( $destind, "Status" ) || "UNDEF";
-		    push(@problems,"Status is $status (not Active).")
-			if( $status ne "Active" );
-
-		    my $notify = &DBget( $destind, "Notify" );
-		    push(@problems,"Notify is not set.") if( ! $notify );
-
-		    push(@toprint, "<tr><th align=left>$name</th>");
-		    if( @problems )
-			{
-			push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
-			}
-		    else
-			{
-			push( @toprint,
-			    "<td>",
-			    "<input type=checkbox name=notify_inds checked value=",
-			    $destind, ">" );
-			}
-		    push( @toprint, "</td></tr>" );
+		    $name = $destind;
+		    push(@problems,"No associated name.");
 		    }
+
+		my $status = &DBget( $destind, "Status" ) || "UNDEF";
+		push(@problems,"Status is $status (not Active).")
+		    if( $status ne "Active" );
+
+		my $notify = &DBget( $destind, "Notify" );
+		push(@problems,"Notify is not set.") if( ! $notify );
+
+		push(@toprint, "<tr><th align=left>$name</th>");
+		if( @problems )
+		    {
+		    push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
+		    }
+		else
+		    {
+		    push( @toprint,
+			"<td>",
+			"<input type=checkbox name=notify_inds checked value=",
+			$destind, ">" );
+		    }
+		push( @toprint, "</td></tr>" );
 		}
 	    }
 	push( @toprint,
@@ -3127,7 +3124,7 @@ sub contacts_to_stickers
     }
 
 #########################################################################
-#	Create a assessment form from a template.			#
+#	Create an assessment form from a template.			#
 #########################################################################
 sub dump_assessment
     {
@@ -3340,7 +3337,7 @@ sub dump_assessment
     }
 
 #########################################################################
-#	Create a assessment form from a template.			#
+#	Create an assessment form from a template.			#
 #########################################################################
 sub do_notify
     {
@@ -3353,18 +3350,20 @@ sub do_notify
 	? split(/,/,$cpi_vars::FORM{notify_inds})
 	: &get_patron_order($ind) );
 
+    my %already_sent;
     my @msgs;
     foreach my $destind ( @indlist )
         {
+	next if( $destind !~ /^P_/ );
 	my @problems;
 	my $name = $destind;
 
 	if( ! &inlist( $destind, @all_on_route ) )
-	    { push(@problems,"\"$destind\" is not on the route."); }
+	    { push(@problems,"\"$destind\" XL(is not on the route.)"); }
 	elsif( ! ( $name = &DBget( $destind, "Name" ) ) )
 	    {
 	    $name = $destind;
-	    push(@problems,"No associated name.");
+	    push(@problems,"XL(No associated name.)");
 	    }
 
 	my $status = &DBget( $destind, "Status" ) || "UNDEF";
@@ -3372,7 +3371,7 @@ sub do_notify
 	    if( $status ne "Active" );
 
 	my $notify = &DBget( $destind, "Notify" );
-	push(@problems,"Notify is not set.") if( ! $notify );
+	push(@problems,"XL(Notify is not set.)") if( ! $notify );
 
 	push(@msgs, "<tr><th align=left>$name</th>");
 	if( @problems )
@@ -3380,12 +3379,15 @@ sub do_notify
 	    push( @msgs, "<td bgcolor=red>",
 		join("<br>",@problems), "</td></tr>" );
 	    }
+	elsif( $already_sent{$notify} )
+	    { push(@msgs,"<td>XL(Message already sent to) $already_sent{$notify}.</td></tr>"); }
 	else
 	    {
 	    &cpi_send_file::sendmail( $emailsrc, $notify,
 	        $cpi_vars::FORM{notify_subject},
 		$cpi_vars::FORM{notify_message} );
-	    push(@msgs, "<td>Notified via $notify.</td></tr>");
+	    push(@msgs, "<td>XL(Notified via) $notify.</td></tr>");
+	    $already_sent{$notify} = $name;
 	    }
 	}
     return join("","<table>",@msgs,"</table>");
