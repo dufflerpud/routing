@@ -42,11 +42,11 @@ do "./common.pl";
 
 # Put constants here
 
-my $cpi_vars::PROG = ( $_ = $0, s+.*/++, s/\.[^\.]*$//, $_ );
 my $TMP = "/tmp/$cpi_vars::PROG.$$";
 my $BASE = "/usr/local/projects/Routing";
-my $cpi_vars::CACHEDIR = "$BASE/cache";
 my $TEMPLATE = "${BASE}/lib/routes.html";
+$cpi_vars::PROG = ( $_ = $0, s+.*/++, s/\.[^\.]*$//, $_ );
+$cpi_vars::CACHEDIR = "$BASE/cache";
 
 my %CFG =
     (
@@ -340,13 +340,13 @@ sub read_contacts
 #########################################################################
 #	Generate a small unique id					#
 #########################################################################
-my @cpi_compress_integer::COMPACT_LEX = ( '0'..'9', 'A'..'Z', 'a'..'z', '_' );
+my @COMPACT_LEX = ( '0'..'9', 'A'..'Z', 'a'..'z', '_' );
 sub unique_id
     {
     my @compact=();
     my $t = time();
-    my $l = scalar(@cpi_compress_integer::COMPACT_LEX);
-    do { push( @compact, $cpi_compress_integer::COMPACT_LEX[ $t % $l ] ); } while( $t = int($t/$l) );
+    my $l = scalar(@COMPACT_LEX);
+    do { push( @compact, $COMPACT_LEX[ $t % $l ] ); } while( $t = int($t/$l) );
     return join("",reverse(@compact));
     }
 
