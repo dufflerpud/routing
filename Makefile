@@ -24,8 +24,8 @@ launder:
 		chmod 777 cache
 
 merge:
-		make install
-		#make launder
+		$(MAKE) install
+		#$(MAKE) launder
 		(cd $(MERGE_DIR)/Distributors; find . -print | grep -v $(SAMPLE_DISTRIBUTOR) | cpio -o) | (cd Distributors; cpio -idumv)
 		cp $(MERGE_DIR)/monthly_reports .
 
