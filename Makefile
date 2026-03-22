@@ -74,8 +74,8 @@ install:
 	install -d -m 755 -o $(WUSER) -g $(WGROUP)	$(WWWDIR)/routing_common 
 	install -d -m 755 mail mail			$(WWWDIR)/vcf 
 	install -d -m 777 -o $(SYSTEMUSER) -g $(SYSTEMGROUP)		$(ROUTING_DB)
-	$(MAKE) std_$@ ORIGINAL_TARGET=$@
+	$(MAKE) ORIGINAL_TARGET=$@ std_$@
 
 %:
 		@echo "Invoking std_$@ rule:"
-		@$(MAKE) std_$@ ORIGINAL_TARGET=$@
+		@$(MAKE) ORIGINAL_TARGET=$@ std_$@
