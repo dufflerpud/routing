@@ -34,6 +34,9 @@ ROUTING_DB="$(PROJECTDIR)/db"
 ROUTING_ADMINISTRATOR="administrator"
 ROUTING_ADMINISTRATOR_PASSWORD="OOPSCHANGEME!"
 
+fratboy:
+	@echo "SYSTEMWWW=$(SYSTEMWWW) WWWDIR=$(WWWDIR)"
+
 install:
 	$(GNUINSTALL) -d -m 777 -o $(SYSTEMUSER) -g $(SYSTEMGROUP)		$(LOGDIR)/. 
 	$(GNUINSTALL) -d -m 755 -o $(WUSER) -g $(WGROUP)	$(LOGDIR)/assessments 
@@ -68,9 +71,7 @@ install:
 	$(RM) -f $(WWWDIR)/routes/common
 	$(LN) -s	 ../routing_common			$(WWWDIR)/routes/common
 	$(GNUINSTALL) -o $(WUSER) -g $(WGROUP) -m 0644 lib/*.css lib/*.jpg $(WWWDIR)/routes/common
-	$(GNUINSTALL) -d -m 755 -o $(SYSTEMUSER) -g $(SYSTEMGROUP)		$(WWWDIR)/routing 
-	$(RM) -f $(WWWDIR)/routing/routing
-	$(LN) -s	 .					$(WWWDIR)/routing/routing
+	: $(GNUINSTALL) -d -m 755 -o $(SYSTEMUSER) -g $(SYSTEMGROUP)		$(WWWDIR)/routing 
 	$(GNUINSTALL) -d -m 755 -o $(WUSER) -g $(WGROUP)	$(WWWDIR)/routing_common 
 	$(GNUINSTALL) -d -m 755 mail mail			$(WWWDIR)/vcf 
 	$(GNUINSTALL) -d -m 777 -o $(SYSTEMUSER) -g $(SYSTEMGROUP)		$(ROUTING_DB)

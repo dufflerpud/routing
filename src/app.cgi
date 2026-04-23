@@ -69,10 +69,8 @@ use cpi_time qw(time_string);
 use cpi_cgi qw(CGIheader note_to_html safe_html show_vars);
 use cpi_mime qw( mime_string );
 
-$cpi_vars::WEBSERVER = "routing.brightsands.com";
-$cpi_vars::WEBTOP = "/var/www/routing$cpi_vars::WEBOFFSET";
+$cpi_vars::PROJECT = "routing";		# cpi_vars will pick up routing_cfg.pl.
 use cpi_vars;
-$cpi_vars::URL = $cpi_vars::PROJECTS_URL."/".$cpi_vars::WEBOFFSET;
 
 $cpi_vars::TABLE_TAGS	= "bgcolor=\"#c0c0d0\"";
 $cpi_vars::TABLE_TAGS	= "USECSS";
@@ -121,9 +119,11 @@ my $PORTING_DIR		= $SRC."/porting";
 our $FORMNAME		= "form";
 $cpi_vars::CACHEDIR 	= "$cpi_vars::BASEDIR/cache";
 my $DEST_DIR		= "routes";
-my $DEST_HTTP		= "$cpi_vars::WEBTOP/$DEST_DIR";
+my $DEST_HTTP		= "%%WWWDIR%%/$DEST_DIR";
 #my $GOOGLE_KML		= "$cpi_vars::URL/google_kml.html";
-$cpi_vars::URL		= "$cpi_vars::URL/$DEST_DIR";
+#$cpi_vars::URL		= "$cpi_vars::URL/$DEST_DIR";
+my $MYURLDIR		= $cpi_vars::URL;
+$MYURLDIR		=~ s+[^/]*.cgi++;
 our $PROG_URL		= $cpi_vars::URL;
 $PROG_URL .= "-test.cgi" if( ($ENV{SCRIPT_NAME}||"") =~ /-test/ );
 my $PROJLONG		= "Routing";
@@ -134,11 +134,11 @@ my $TRIPS_DIR		= "$LOGDIR/trips";
 my $HTML_DIR		= "$LOGDIR/html";
 my $PROGRESS_DIR	= "$LOGDIR/progress";
 my $ASSESSMENT_DIR	= "$LOGDIR/assessments";
-my $PROGRESS_URL	= "$cpi_vars::URL/progress";
+my $PROGRESS_URL	= "$MYURLDIR/progress";
 my $DISABLED		= "$cpi_vars::BASEDIR/disabled.html";
 my $DISTRIBUTOR_DIR	= "$cpi_vars::BASEDIR/Distributors";
 my $EXPECTED_DIR	= "$LOGDIR/expected";
-my $EXPECTED_URL	= "$cpi_vars::URL/expected";
+my $EXPECTED_URL	= "$MYURLDIR/expected";
 my $INDENT_JSON		= "/usr/local/bin/indent_json";
 my $INVOICES_DIR	= "$cpi_vars::BASEDIR/invoices";
 my $DISTUSER_TO_PDF	= "$cpi_vars::BASEDIR/bin/distuser_to_pdf";
@@ -152,7 +152,7 @@ my $WKHTMLTOPDF		= "/usr/local/bin/wkhtmltopdf";
 my $COSTSDIR		= $cpi_vars::BASEDIR."/costs";
 
 my $EXIT_FILE		= $cpi_vars::BASEDIR."/exit_reason.txt";
-my $FORM_URL		= "$cpi_vars::URL/forms";
+my $FORM_URL		= "$MYURLDIR/forms";
 my $FORM_DIR		= "%%WWWDIR%%/forms";
     
 # This used to decode FORM{progress} everytime the driver's
@@ -244,8 +244,8 @@ my %DEFAULT_HEADER =
     "to0"	=> "dalward\@seniorsplus.org",
     "to1"	=> "treed\@spectrumgenerations.org",
     "to2"	=> "erowe\@spectrumgenerations.org",
-    "to"	=> "chris.interim\@gmail.com",
-    #"to"	=> "dufflerpud\@yahoo.com",
+    "to3"	=> "chris.interim\@gmail.com",
+    "to"	=> "dufflerpud\@yahoo.com",
     "subject"	=> "$PROJLONG route update"
     );
 
@@ -755,9 +755,8 @@ sub check_if_app_needs_header
 #########################################################################
 sub show_route
     {
-    my $fname = $cpi_vars::URL;
-    $fname = $cpi_vars::URL;	# Get rid of only seen once error above
-    $fname =~ s+/[^/]*$+/$cpi_vars::FORM{arg}.html+;
+    my $fname = "$MYURLDIR/$cpi_vars::FORM{arg}.html";
+    #$fname =~ s+/[^/]*$+/$cpi_vars::FORM{arg}.html+;
     &xprint( &template( $fname, "%%USER%%", $cpi_vars::USER ) );
     &cleanup( 0 );
     }
@@ -1685,39 +1684,42 @@ EOF
 	    "<table><tr><th><input type=text help=notify_subject name=notify_subject placeholder='XL(Subject)'>",
 	    "<tr><th><textarea rows=20 cols=40 help=notify_message name=notify_message placeholder='XL(Message)'></textarea></th></tr>",
 	    "<tr><th><table><tr><th>XL(Person)</th><th>Notify</th></tr>" );
-	foreach my $destind ( &get_patron_order( $args{ind} ) )
+	if( DBget($args{ind},"Name") )	# Don't bother to look at the route if name not set
 	    {
-	    if( $destind =~ /^P_/ )
+	    foreach my $destind ( &get_patron_order( $args{ind} ) )
 		{
-		my @problems;
-
-		my $name = &DBget( $destind, "Name" );
-		if( ! $name )
+		if( $destind =~ /^P_/ )
 		    {
-		    $name = $destind;
-		    push(@problems,"No associated name.");
-		    }
+		    my @problems;
 
-		my $status = &DBget( $destind, "Status" ) || "UNDEF";
-		push(@problems,"Status is $status (not Active).")
-		    if( $status ne "Active" );
+		    my $name = &DBget( $destind, "Name" );
+		    if( ! $name )
+			{
+			$name = $destind;
+			push(@problems,"No associated name.");
+			}
 
-		my $notify = &DBget( $destind, "Notify" );
-		push(@problems,"Notify is not set.") if( ! $notify );
+		    my $status = &DBget( $destind, "Status" ) || "UNDEF";
+		    push(@problems,"Status is $status (not Active).")
+			if( $status ne "Active" );
 
-		push(@toprint, "<tr><th align=left>$name</th>");
-		if( @problems )
-		    {
-		    push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
+		    my $notify = &DBget( $destind, "Notify" );
+		    push(@problems,"Notify is not set.") if( ! $notify );
+
+		    push(@toprint, "<tr><th align=left>$name</th>");
+		    if( @problems )
+			{
+			push( @toprint, "<td bgcolor=red>", join("<br>",@problems) );
+			}
+		    else
+			{
+			push( @toprint,
+			    "<td>",
+			    "<input type=checkbox name=notify_inds checked value=",
+			    $destind, ">" );
+			}
+		    push( @toprint, "</td></tr>" );
 		    }
-		else
-		    {
-		    push( @toprint,
-			"<td>",
-			"<input type=checkbox name=notify_inds checked value=",
-			$destind, ">" );
-		    }
-		push( @toprint, "</td></tr>" );
 		}
 	    }
 	push( @toprint,
@@ -3277,7 +3279,7 @@ sub dump_assessment
 		. "," . &hashof($contents).".html";
         $fullfilename = $FORM_DIR."/".$filename;
 	my $todo = " to fill out assent form for $patronname";
-	my $live_url = join("/",$cgi_vars::URL,"forms",$filename);
+	my $live_url = join("/",$MYURLDIR,$DEST_DIR,"forms",$filename);
 	$live_url_txt = join("",
 	    "<div class=no-print>",
 	    "<a href='$live_url'>Click</a> $todo",
@@ -3498,9 +3500,9 @@ sub dump_route
 	        if( -d $local_dir );
 	    }
 
-	my $live_url = join("/",$cpi_vars::URL,$distributorfilename,$secure_name);
+	my $live_url = join("/",$MYURLDIR,$DEST_DIR,$distributorfilename,$secure_name);
 	my $live_qrcode = &cpi_qrcode_of::qrcode_of( $live_url, {encoding=>"image"} );
-	my $help_qrcode = &cpi_qrcode_of::qrcode_of( "$cgi_vars::URL/help/Driver.cgi", {encoding=>"image"} );
+	my $help_qrcode = &cpi_qrcode_of::qrcode_of( "$MYURLDIR/help/Driver.cgi", {encoding=>"image"} );
 	$request{data} =~ s/%%LIVE_JAVASCRIPT%%/onLoad='setup_page();'/gms;
 	$request{data} =~ s/%%LIVE_URL%%/$live_url/gms;
 	$request{data} =~ s/%%LIVE_QRCODE%%/$live_qrcode/gms;
