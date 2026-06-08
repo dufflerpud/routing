@@ -403,6 +403,8 @@ my %TABLE_FIELDS =
 		count		=> 3 },
 	      {	Name		=> "Expires",
 		handler		=> \&Field_Text },
+	      {	Name		=> "Distribution_address",
+		handler		=> \&Field_Text },
 	      {	Name		=> "Coordinator_note",
 		header		=> "Coordinator's note",
 		handler		=> \&Field_Textarea },
@@ -473,6 +475,9 @@ my %TABLE_FIELDS =
 	      {	Name		=> "Status",
 		Searchable	=> 1,
 		handler		=> \&Field_SelectFromList },
+	      {	Name		=> "Proxy",
+		header		=> "Proxy",
+		handler		=> \&Field_Text },
 	      {	Name		=> "Emergency_contact_0",
 		header		=> "Emergency contact",
 		handler		=> \&Field_Text },
@@ -2093,6 +2098,37 @@ sub indirect_get
     }
 
 #########################################################################
+#	Used for debugging.						#
+#########################################################################
+sub print_list
+    {
+    return;
+    my( $label, @stops ) = @_;
+    print STDERR "${label}:  [",
+        join(", ",
+	    ( map { "$_($stop{$_}{name_string})" } @stops ) ), "]\n";
+    }
+
+#########################################################################
+#	Used to sort 
+#########################################################################
+my %stopstring_cache;
+sub stopstring
+    {
+    my( $stopind ) = @_;
+    if( ! $stopstring_cache{$stopind} )
+	{
+	my @ret;
+	push( @ret, $stop{$stopind}{address} )	if( $stop{$stopind}{address} );
+	push( @ret, $stop{$stopind}{proxy} )	if( $stop{$stopind}{proxy} );
+	my @nametoks = split(/\s+/,$stop{$stopind}{name});
+	push( @ret, $nametoks[-1], @nametoks );
+	$stopstring_cache{$stopind} = join(" ",@ret);
+	}
+    return $stopstring_cache{$stopind};
+    }
+
+#########################################################################
 #	Figure out appropriate routing software and call it.		#
 #	For right now, it's only Mapquest.				#
 #########################################################################
@@ -2108,11 +2144,36 @@ sub costs_batch
     }
 sub order_query
     {
+    my @uncompressed_unordered = @_;
     &setup_mappers_list();
     print STDERR "DEFAULT_ROUTER=$DEFAULT_ROUTER, mappers=::", &Dumper(\%mappers), "::\nfq_drivers=::",
         &Dumper( \%cpi_drivers::fq_drivers ), "::\n";
-    my @res = &{ $mappers{$DEFAULT_ROUTER}{order_query} }( @_ );
-    return @res;
+    print STDERR "Stop hash:\n{ ", &Dumper( \%stop ), " }\n";
+    &print_list("Uncompressed unordered",@uncompressed_unordered);
+
+    my %address_to_stoplist;
+    foreach my $stopkey ( @uncompressed_unordered[1..$#uncompressed_unordered-1] )
+        {
+	push( @{$address_to_stoplist{$stop{$stopkey}{address}}}, $stopkey ) if( $stop{$stopkey}{address} );
+	}
+    my @compressed_unordered = ( $uncompressed_unordered[0] );
+    push( @compressed_unordered, ( map{ $address_to_stoplist{$_}[0] } keys %address_to_stoplist ) );
+    push( @compressed_unordered, $uncompressed_unordered[$#uncompressed_unordered] );
+    &print_list("Compressed unordered",@compressed_unordered);
+
+    my @compressed_ordered = &{ $mappers{$DEFAULT_ROUTER}{order_query} }( @compressed_unordered );
+    &print_list("Compressed ordered",@compressed_ordered);
+
+    my @uncompressed_ordered = ( $compressed_ordered[0] );
+    foreach my $stopkey ( @compressed_ordered[1..$#compressed_ordered-1] )
+        {
+	push( @uncompressed_ordered,
+	    sort { &stopstring($a) cmp &stopstring($b) }
+		@{ $address_to_stoplist{ $stop{$stopkey}{address} } } );
+	}
+    push( @uncompressed_ordered, $compressed_ordered[$#compressed_ordered] );
+    &print_list("Uncompressed ordered", @uncompressed_ordered);
+    return @uncompressed_ordered;
     }
 
 #########################################################################
@@ -2222,6 +2283,7 @@ sub one_entry
 	"ind"			=> $ind||"",
 	"type"			=> $stop{$stopind}{type}||"",
         "name"			=> $stop{$stopind}{name}||"",
+        "proxy"			=> $stop{$stopind}{proxy}||"",
         "phone"			=> $stop{$stopind}{phone}||"",
         "addrtxt"		=> $stop{$stopind}{addrtxt}||"",
         "address"		=> $stop{$stopind}{address}||"",
@@ -2295,6 +2357,7 @@ sub make_stop
     if( ! $stop{$stop_name} )
 	{
 	push( @{$stop{$stop_name}{patrons}}, $ind );
+	$stop{$stop_name}{proxy}	= &DBget($ind,"Proxy");
 	$stop{$stop_name}{address}	= &DBget($ind,"Address");
 	$stop{$stop_name}{addrtxt} =
 	    ( $stop{$stop_name}{address} =~ /(.*),US$/
