@@ -1047,16 +1047,22 @@ sub include_patrons_from_routes
     my( $tbl, $ind, @routes_to_include ) = @_;
     &DBwrite();
     #print "include_patrons_from_routes($tbl,$ind,",join(",",@routes_to_include),")<br>\n";
+    my $current_distributor = &DBget($ind,"Distributor");
     foreach my $patron_ind ( grep( &i_can(__LINE__,"w","Patron",$_), &DBget("Patron") ) )
 	{
-	my %on_routes =
-	    map { ($_,1) } split(/,/,&DBget($patron_ind,"Route"));
-	#print "Looking at $patron_ind:  ",join(",",keys %on_routes),".<br>\n";
-	if( grep( $on_routes{$_}, @routes_to_include ) )
+	my $patron_distributor = &DBget( $patron_ind, "Distributor" );
+	if( $current_distributor eq $patron_distributor )
 	    {
-	    $on_routes{$ind} = 1;
-	    &DBput( $patron_ind, "Route", join(",",sort keys %on_routes) );
-	    #print "Routes{$patron_ind}=",&DBget($patron_ind,"Route"),"<br>\n";
+	    my %on_routes =
+		map { ($_,1) } split(/,/,&DBget($patron_ind,"Route"));
+	    #print "Looking at $patron_ind:  ",join(",",keys %on_routes),".<br>\n";
+	    if( grep( $on_routes{$_}, @routes_to_include )
+	     || &DBget($patron_ind,"FoodPrefs")=~/CSFP/ && &inlist("CSFP",@routes_to_include) )
+		{
+		$on_routes{$ind} = 1;
+		&DBput( $patron_ind, "Route", join(",",sort keys %on_routes) );
+		#print "Routes{$patron_ind}=",&DBget($patron_ind,"Route"),"<br>\n";
+		}
 	    }
 	}
     &DBpop();
@@ -1894,6 +1900,7 @@ EOF
 <option disabled=disabled selected value=BlAnK>
     XL(Select route to include)
 </option>
+<option value=CSFP>CSFP</option>
 EOF
 
 	    push( @toprint,
@@ -2115,7 +2122,7 @@ sub print_list
 my %stopstring_cache;
 sub stopstring
     {
-    my( $stopind ) = @_;
+    my( $stopind, $ignore_address ) = @_;
     if( ! $stopstring_cache{$stopind} )
 	{
 	my @ret;
@@ -2494,7 +2501,11 @@ sub get_patron_order
 	}
     my @stoplist = &make_stop_list();
 
-    if( !&DBget($route_ind,"Route_starts_with")
+    if( &DBget($route_ind,"Distribution_address") )
+        {
+	return sort { &stopstring($a,1) cmp &stopstring($b,1) } @stoplist;
+	}
+    elsif( !&DBget($route_ind,"Route_starts_with")
      && !&DBget($route_ind,"Route_ends_with") )
         { return &optimize_order(@stoplist); }
     else
