@@ -911,19 +911,23 @@ sub user_in_record_list
 
 #########################################################################
 #	Return the type of a record if no check specified.		#
-#	Otherwise only return 
+#	Otherwise only return 						#
 #########################################################################
 sub rec_type
     {
     my( $rec, $check ) = @_;
-    return undef if( $rec !~ /^([SPDR])_/ );
-    my $ret =
-        {	S=>"Staff",
+    my $ret = undef;
+    if( $rec =~ /^([SPDR])_/ )
+	{
+	$ret =
+	    {	S=>"Staff",
 		P=>"Patron",
 		D=>"Distributor",
 		R=>"Route"	} -> { $1 };
-    return $ret if( ! $check || $ret eq $check );
-    return undef;
+	$ret = undef if( $check && $ret ne $check );
+	}
+    print STDERR "rec_type(", ($rec||"UNDEF"), ",", ($check||"UNDEF"), ") returns [",($ret||"UNDEF"),"]\n";
+    return $ret;
     }
 
 #########################################################################
@@ -2503,7 +2507,13 @@ sub get_patron_order
 
     if( &DBget($route_ind,"Distribution_address") )
         {
-	return sort { &stopstring($a,1) cmp &stopstring($b,1) } @stoplist;
+	return
+	    (
+	    $stoplist[0],
+	    ( sort { &stopstring($a,1) cmp &stopstring($b,1) }
+		@stoplist[1..$#stoplist-1] ),
+	    $stoplist[$#stoplist]
+	    );
 	}
     elsif( !&DBget($route_ind,"Route_starts_with")
      && !&DBget($route_ind,"Route_ends_with") )
