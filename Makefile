@@ -8,7 +8,7 @@
 #@HDR@	of Brightsands and may not be used, copied or made available
 #@HDR@	to anyone, except in accordance with the license under which
 #@HDR@	it is furnished.
-PROGRAMS=last_month addr_to_latlong check_history completed_route_update defluff distuser_to_pdf embed_images htmls_to_times merge_routes read_mapquest read_trips read_vcf split_trips vcf_mail xlate_vcf
+PROGRAMS=last_month addr_to_latlong check_history completed_route_update defluff distuser_to_pdf embed_images htmls_to_times merge_routes read_mapquest read_trips read_vcf split_trips vcf_mail xlate_vcf mesh
 
 PROJECTSDIR?=$(shell echo $(CURDIR) | sed -e 's+/projects/.*+/projects+')
 include $(PROJECTSDIR)/common/Makefile.std
@@ -76,6 +76,12 @@ install:
 	$(GNUINSTALL) -d -m 755 mail mail			$(WWWDIR)/vcf 
 	$(GNUINSTALL) -d -m 777 -o $(SYSTEMUSER) -g $(SYSTEMGROUP)		$(ROUTING_DB)
 	$(MAKE) ORIGINAL_TARGET=$@ std_$@
+
+test:
+		$(BINDIR)/mesh -number_patrons=10 -mode=single
+		$(BINDIR)/mesh -number_staff=1 -number_patrons=10
+		@echo "--------------------------------"
+		$(BINDIR)/mesh -number_staff=4 -number_patrons=8
 
 %:
 		@echo "Invoking std_$@ rule:"
