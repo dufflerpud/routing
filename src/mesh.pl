@@ -31,8 +31,9 @@ use List::Util qw(min max);
 my $TMP		= "/tmp/$cpi_vars::PROG.$$";
 #my $TMP	= "/tmp/$cpi_vars::PROG";
 
+my $PROJECTDIR	= "/usr/local/projects/routing";
 my $INPUT_DIR	= "/var/log/routing";
-my $INPUT_BASE	= "/usr/local/projects/mesh/tests/MOW_Sagadahoc";
+my $INPUT_BASE	= "$PROJECTDIR/tests/MOW_Sagadahoc";
 my $INFINITY	= 999999999999;	# If a route costs more than this we're sunk
 
 our %ONLY_ONE_DEFAULTS =
