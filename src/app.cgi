@@ -926,7 +926,7 @@ sub rec_type
 		R=>"Route"	} -> { $1 };
 	$ret = undef if( $check && $ret ne $check );
 	}
-    print STDERR "rec_type(", ($rec||"UNDEF"), ",", ($check||"UNDEF"), ") returns [",($ret||"UNDEF"),"]\n";
+    #print STDERR "rec_type(", ($rec||"UNDEF"), ",", ($check||"UNDEF"), ") returns [",($ret||"UNDEF"),"]\n";
     return $ret;
     }
 
@@ -2130,8 +2130,13 @@ sub stopstring
     if( ! $stopstring_cache{$stopind} )
 	{
 	my @ret;
-	push( @ret, $stop{$stopind}{address} )	if( $stop{$stopind}{address} );
-	push( @ret, $stop{$stopind}{proxy} )	if( $stop{$stopind}{proxy} );
+	if( ! $ignore_address )
+	    {
+	    push( @ret, $stop{$stopind}{address} )
+		if( $stop{$stopind}{address} );
+	    #push( @ret, $stop{$stopind}{proxy} )
+		#if( $stop{$stopind}{proxy} );
+	    }
 	my @nametoks = split(/\s+/,$stop{$stopind}{name});
 	push( @ret, $nametoks[-1], @nametoks );
 	$stopstring_cache{$stopind} = join(" ",@ret);
@@ -3131,7 +3136,7 @@ sub prefs_to_html
 	    ) . "'>$pref</span>" );
 	}
     my $retstring = join( ', ', @ret );
-    print STDERR "prefs_to_html($prefstring) returns [$retstring]\n";
+    #print STDERR "prefs_to_html($prefstring) returns [$retstring]\n";
     return $retstring;
     }
 
@@ -4101,7 +4106,7 @@ EOF
     push( @toprint, "<input type=hidden name=window_last value='$counter'>\n",
         "<tr><th style='padding:0px;border-width:0px;'>" );
 
-    print STDERR __LINE__, ":  CMC tbl=$args{tbl}.\n";
+    #print STDERR __LINE__, ":  CMC tbl=$args{tbl}.\n";
     #if( $args{tbl} eq "Staff" || &i_can(__LINE__,"w",$args{tbl},$args{ind}) )
     if( &i_can(__LINE__,"w",$args{tbl},$args{ind}) )
 	{
